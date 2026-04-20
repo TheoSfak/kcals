@@ -1,0 +1,18 @@
+# KCALS – Git Ignore
+
+# Sensitive config – copy config/db.php.example and fill in credentials
+config/db.php
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs & temp
+*.log
+/tmp/

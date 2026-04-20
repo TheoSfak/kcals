@@ -1,0 +1,58 @@
+<?php
+// ============================================================
+// KCALS – HTML Header Include
+// Usage: include this at the top of every page
+// Variables expected:
+//   $pageTitle   – string  (page <title>)
+//   $activeNav   – string  (nav link key: 'home','dashboard','plan','progress','tips')
+// ============================================================
+require_once __DIR__ . '/auth.php';
+
+$pageTitle = $pageTitle ?? 'KCALS – Smart Nutrition';
+$activeNav = $activeNav ?? '';
+$isLoggedIn = isLoggedIn();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($pageTitle) ?></title>
+    <meta name="description" content="KCALS – Personalised weekly nutrition plans, progress tracking and wellness tips.">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons (CDN) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- Chart.js (dashboard only) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- App CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-inner">
+        <a class="navbar-brand" href="/index.php">KCALS<span>.</span></a>
+
+        <ul class="navbar-nav">
+            <?php if ($isLoggedIn): ?>
+                <li><a href="/dashboard.php"  class="<?= $activeNav==='dashboard' ? 'active':'' ?>">
+                    <i data-lucide="layout-dashboard" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>Dashboard</a></li>
+                <li><a href="/plan.php"        class="<?= $activeNav==='plan' ? 'active':'' ?>">
+                    <i data-lucide="calendar" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>My Plan</a></li>
+                <li><a href="/progress.php"    class="<?= $activeNav==='progress' ? 'active':'' ?>">
+                    <i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>Progress</a></li>
+                <li><a href="/tips.php"        class="<?= $activeNav==='tips' ? 'active':'' ?>">
+                    <i data-lucide="lightbulb" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>Tips</a></li>
+                <li><a href="/logout.php"      class="btn-nav">
+                    <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px;"></i>Logout</a></li>
+            <?php else: ?>
+                <li><a href="/index.php"   class="<?= $activeNav==='home' ? 'active':'' ?>">Home</a></li>
+                <li><a href="/login.php"   class="<?= $activeNav==='login' ? 'active':'' ?>">Login</a></li>
+                <li><a href="/register.php" class="btn-nav">Get Started</a></li>
+            <?php endif; ?>
+        </ul>
+    </div>
+</nav>
