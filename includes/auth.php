@@ -35,7 +35,7 @@ function isLoggedIn(): bool {
 
 function requireLogin(): void {
     if (!isLoggedIn()) {
-        header('Location: /login.php');
+        header('Location: ' . BASE_URL . '/login.php');
         exit;
     }
 }

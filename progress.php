@@ -148,7 +148,7 @@ require_once __DIR__ . '/includes/header.php';
             </table>
         </div>
         <?php else: ?>
-        <p style="text-align:center; color:var(--slate-mid); padding:2rem;">No check-ins logged yet. <a href="/dashboard.php">Go to dashboard</a> to add your first.</p>
+        <p style="text-align:center; color:var(--slate-mid); padding:2rem;">No check-ins logged yet. <a href="<?= BASE_URL ?>/dashboard.php">Go to dashboard</a> to add your first.</p>
         <?php endif; ?>
     </div>
 

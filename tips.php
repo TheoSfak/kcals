@@ -37,9 +37,9 @@ require_once __DIR__ . '/includes/header.php';
 
     <!-- Category Filter -->
     <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.5rem;">
-        <a href="/tips.php" class="btn btn-sm <?= $category==='' ? 'btn-primary' : 'btn-secondary' ?>">All</a>
+        <a href="<?= BASE_URL ?>/tips.php" class="btn btn-sm <?= $category==='' ? 'btn-primary' : 'btn-secondary' ?>">All</a>
         <?php foreach ($categories as $cat): ?>
-        <a href="/tips.php?category=<?= $cat ?>" class="btn btn-sm <?= $category===$cat ? 'btn-primary' : 'btn-secondary' ?>">
+        <a href="<?= BASE_URL ?>/tips.php?category=<?= $cat ?>" class="btn btn-sm <?= $category===$cat ? 'btn-primary' : 'btn-secondary' ?>">
             <i data-lucide="<?= $icons[$cat] ?>" style="width:13px;height:13px;"></i>
             <?= ucfirst($cat) ?>
         </a>

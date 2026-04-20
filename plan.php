@@ -161,7 +161,7 @@ $pageTitle = 'My Weekly Plan – KCALS';
 $activeNav = 'plan';
 require_once __DIR__ . '/includes/header.php';
 
-$generateUrl = '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
+$generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
 ?>
 
 <div style="max-width:1100px; margin:2rem auto; padding:0 1.25rem;">
@@ -181,7 +181,7 @@ $generateUrl = '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 <?= $plan ? 'Regenerate Plan' : 'Generate Plan' ?>
             </a>
             <?php if ($plan): ?>
-            <a href="/shopping.php" class="btn btn-outline">
+            <a href="<?= BASE_URL ?>/shopping.php" class="btn btn-outline">
                 <i data-lucide="shopping-cart" style="width:15px;height:15px;"></i>
                 Shopping List
             </a>

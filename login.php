@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/auth.php';
 
 if (isLoggedIn()) {
-    header('Location: /dashboard.php');
+    header('Location: ' . BASE_URL . '/dashboard.php');
     exit;
 }
 
@@ -30,8 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Incorrect email or password.';
             } else {
                 loginUser((int)$user['id'], $user['email'], $user['full_name']);
-                $redirect = $_GET['redirect'] ?? '/dashboard.php';
-                header('Location: ' . $redirect);
+                header('Location: ' . BASE_URL . '/dashboard.php');
                 exit;
             }
         }
@@ -58,7 +57,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="alert alert-success">Account created! You can now log in.</div>
         <?php endif; ?>
 
-        <form method="POST" action="/login.php" novalidate>
+        <form method="POST" action="<?= BASE_URL ?>/login.php" novalidate>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
 
             <div class="form-group">
@@ -81,7 +80,7 @@ require_once __DIR__ . '/includes/header.php';
         </form>
 
         <p class="text-center text-small mt-2" style="color:var(--slate-mid);">
-            No account yet? <a href="/register.php">Create one free</a>
+            No account yet? <a href="<?= BASE_URL ?>/register.php">Create one free</a>
         </p>
     </div>
 </div>

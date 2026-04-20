@@ -112,11 +112,11 @@ require_once __DIR__ . '/includes/header.php';
             </p>
         </div>
         <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
-            <a href="/plan.php" class="btn btn-primary btn-sm">
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary btn-sm">
                 <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
                 <?= $currentPlan ? 'View My Plan' : 'Generate Plan' ?>
             </a>
-            <a href="/progress.php" class="btn btn-outline btn-sm">
+            <a href="<?= BASE_URL ?>/progress.php" class="btn btn-outline btn-sm">
                 <i data-lucide="line-chart" style="width:14px;height:14px;"></i>
                 Progress
             </a>
@@ -258,7 +258,7 @@ require_once __DIR__ . '/includes/header.php';
             <?php if (!empty($checkinErrors)): ?>
                 <div class="alert alert-error"><?= implode('<br>', array_map('htmlspecialchars', $checkinErrors)) ?></div>
             <?php endif; ?>
-            <form method="POST" action="/dashboard.php">
+            <form method="POST" action="<?= BASE_URL ?>/dashboard.php">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                 <input type="hidden" name="action"     value="checkin">
 
@@ -313,7 +313,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="icon-wrap"><i data-lucide="lightbulb" style="width:16px;height:16px;"></i></div>
                     Weekly Wellness Tips
                 </div>
-                <a href="/tips.php" class="text-small" style="color:var(--green-dark);">View all →</a>
+                <a href="<?= BASE_URL ?>/tips.php" class="text-small" style="color:var(--green-dark);">View all →</a>
             </div>
             <?php foreach ($tips as $tip): ?>
             <div class="tip-card mb-2">
@@ -346,7 +346,7 @@ require_once __DIR__ . '/includes/header.php';
                 Current Week Plan
                 <span class="zone-badge <?= $zone ?>" style="margin-left:.5rem;"><?= strtoupper($zone) ?></span>
             </div>
-            <a href="/plan.php" class="btn btn-outline btn-sm">View Full Plan</a>
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">View Full Plan</a>
         </div>
         <div class="plan-grid">
             <?php foreach ($previewDays as $dayName => $dayMeals): ?>
@@ -374,7 +374,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
         <?php if (count($planData) > 3): ?>
         <div style="text-align:center; margin-top:1rem;">
-            <a href="/plan.php" class="btn btn-outline btn-sm">See all 7 days →</a>
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">See all 7 days →</a>
         </div>
         <?php endif; ?>
     </div>
@@ -385,7 +385,7 @@ require_once __DIR__ . '/includes/header.php';
             <h3 style="margin-bottom:.5rem;">No active plan this week</h3>
             <p>Generate your personalised weekly meal plan based on your current stats.</p>
         </div>
-        <a href="/plan.php" class="btn btn-primary">
+        <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary">
             <i data-lucide="wand-2" style="width:16px;height:16px;"></i>
             Generate My Weekly Plan
         </a>

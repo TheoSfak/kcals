@@ -84,7 +84,7 @@ require_once __DIR__ . '/includes/header.php';
             <p class="text-small" style="color:var(--slate-mid);">All ingredients from your current weekly plan, ready to print.</p>
         </div>
         <div style="display:flex; gap:.75rem;">
-            <a href="/plan.php" class="btn btn-outline btn-sm">← Back to Plan</a>
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">← Back to Plan</a>
             <button onclick="window.print()" class="btn btn-primary btn-sm">
                 <i data-lucide="printer" style="width:14px;height:14px;"></i>
                 Print / Save PDF
@@ -97,7 +97,7 @@ require_once __DIR__ . '/includes/header.php';
         <i data-lucide="shopping-cart" style="width:48px;height:48px; color:var(--slate-light); display:block; margin:0 auto 1rem;"></i>
         <h3>No active plan found</h3>
         <p style="margin:.5rem 0 1.5rem;">Generate a weekly plan first, then come back here for your shopping list.</p>
-        <a href="/plan.php" class="btn btn-primary">Generate Plan</a>
+        <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary">Generate Plan</a>
     </div>
     <?php elseif (empty($shoppingList)): ?>
     <div class="alert alert-warning">Could not build a shopping list from this plan's data.</div>

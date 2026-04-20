@@ -5,7 +5,7 @@
 require_once __DIR__ . '/includes/auth.php';
 
 if (isLoggedIn()) {
-    header('Location: /dashboard.php');
+    header('Location: ' . BASE_URL . '/dashboard.php');
     exit;
 }
 
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
             $stmt->execute([$old['email']]);
             if ($stmt->fetch()) {
-                $errors[] = 'This email is already registered. <a href="/login.php">Log in instead?</a>';
+                $errors[] = 'This email is already registered. <a href="' . BASE_URL . '/login.php">Log in instead?</a>';
             } else {
                 $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $prog->execute([$userId, $old['weight_kg']]);
 
                 loginUser($userId, $old['email'], $old['full_name']);
-                header('Location: /dashboard.php?welcome=1');
+                header('Location: ' . BASE_URL . '/dashboard.php?welcome=1');
                 exit;
             }
         }
@@ -104,7 +104,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="/register.php" novalidate>
+        <form method="POST" action="<?= BASE_URL ?>/register.php" novalidate>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
 
             <!-- Personal Info -->
@@ -211,7 +211,7 @@ require_once __DIR__ . '/includes/header.php';
         </form>
 
         <p class="text-center text-small mt-2" style="color:var(--slate-mid);">
-            Already have an account? <a href="/login.php">Log in here</a>
+            Already have an account? <a href="<?= BASE_URL ?>/login.php">Log in here</a>
         </p>
     </div>
 </div>

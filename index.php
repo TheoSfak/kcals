@@ -17,7 +17,7 @@ require_once __DIR__ . '/includes/header.php';
         <h1>Your Personal<br><span style="color:var(--green-dark)">Calorie & Wellness</span> Coach</h1>
         <p>Get a science-backed, personalised weekly meal plan that adapts to your stress, motivation and lifestyle — not just your weight.</p>
         <div class="hero-cta">
-            <a href="/register.php" class="btn btn-primary btn-lg">
+            <a href="<?= BASE_URL ?>/register.php" class="btn btn-primary btn-lg">
                 <i data-lucide="rocket" style="width:18px;height:18px;"></i>
                 Start Free Today
             </a>
@@ -121,7 +121,7 @@ require_once __DIR__ . '/includes/header.php';
     <div class="container-sm">
         <h2>Ready to start?</h2>
         <p class="mt-1 mb-3">Create your free account and get your first personalised weekly plan in minutes.</p>
-        <a href="/register.php" class="btn btn-primary btn-lg">
+        <a href="<?= BASE_URL ?>/register.php" class="btn btn-primary btn-lg">
             <i data-lucide="arrow-right" style="width:18px;height:18px;"></i>
             Create Free Account
         </a>
