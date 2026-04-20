@@ -2,7 +2,8 @@
 // ============================================================
 // KCALS – Landing Page (index.php)
 // ============================================================
-$pageTitle = 'KCALS – Smart Nutrition & Wellness';
+require_once __DIR__ . '/includes/auth.php';
+$pageTitle = __('home_title');
 $activeNav = 'home';
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -12,18 +13,18 @@ require_once __DIR__ . '/includes/header.php';
     <div class="container">
         <div class="hero-badge">
             <i data-lucide="zap" style="width:13px;height:13px;"></i>
-            Powered by Mifflin-St Jeor Algorithm
+            <?= __('hero_badge') ?>
         </div>
-        <h1>Your Personal<br><span style="color:var(--green-dark)">Calorie & Wellness</span> Coach</h1>
-        <p>Get a science-backed, personalised weekly meal plan that adapts to your stress, motivation and lifestyle — not just your weight.</p>
+        <h1><?= __('hero_h1_line1') ?><br><span style="color:var(--green-dark)"><?= __('hero_h1_line2') ?></span></h1>
+        <p><?= __('hero_sub') ?></p>
         <div class="hero-cta">
             <a href="<?= BASE_URL ?>/register.php" class="btn btn-primary btn-lg">
                 <i data-lucide="rocket" style="width:18px;height:18px;"></i>
-                Start Free Today
+                <?= __('hero_btn_start') ?>
             </a>
             <a href="#how-it-works" class="btn btn-outline btn-lg">
                 <i data-lucide="play-circle" style="width:18px;height:18px;"></i>
-                How It Works
+                <?= __('hero_btn_how') ?>
             </a>
         </div>
     </div>
@@ -34,19 +35,19 @@ require_once __DIR__ . '/includes/header.php';
     <div class="container" style="display:flex; justify-content:center; flex-wrap:wrap; gap:2.5rem; padding:1.5rem 1.25rem; text-align:center;">
         <div>
             <div style="font-size:2rem;font-weight:800;color:var(--green-dark);">7</div>
-            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Days Plan</div>
+            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;"><?= __('stat_days_plan') ?></div>
         </div>
         <div>
             <div style="font-size:2rem;font-weight:800;color:var(--green-dark);">3+</div>
-            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Zones</div>
+            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;"><?= __('stat_zones') ?></div>
         </div>
         <div>
             <div style="font-size:2rem;font-weight:800;color:var(--green-dark);">0</div>
-            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">AI Gimmicks</div>
+            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;"><?= __('stat_ai_gimmicks') ?></div>
         </div>
         <div>
             <div style="font-size:2rem;font-weight:800;color:var(--green-dark);">100%</div>
-            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Math-Based</div>
+            <div style="font-size:0.78rem;color:var(--slate-mid);font-weight:600;text-transform:uppercase;letter-spacing:.5px;"><?= __('stat_math_based') ?></div>
         </div>
     </div>
 </section>
@@ -55,29 +56,29 @@ require_once __DIR__ . '/includes/header.php';
 <section class="section" id="how-it-works">
     <div class="container">
         <div class="text-center mb-3">
-            <h2>How KCALS Works</h2>
-            <p>Three steps to a smarter relationship with food.</p>
+            <h2><?= __('how_title') ?></h2>
+            <p><?= __('how_sub') ?></p>
         </div>
         <div class="feature-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i data-lucide="user-plus"></i></div>
-                <h3>1. Tell Us About You</h3>
-                <p>Enter your height, weight, age, activity level and food preferences. Takes under 2 minutes.</p>
+                <h3><?= __('how_1_title') ?></h3>
+                <p><?= __('how_1_desc') ?></p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i data-lucide="calculator"></i></div>
-                <h3>2. We Calculate Your Needs</h3>
-                <p>Using the Mifflin-St Jeor formula we compute your BMR, TDEE and a personalised calorie target adjusted for your stress and motivation zone.</p>
+                <h3><?= __('how_2_title') ?></h3>
+                <p><?= __('how_2_desc') ?></p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i data-lucide="calendar-check"></i></div>
-                <h3>3. Get Your Weekly Plan</h3>
-                <p>A ready-to-follow 7-day meal plan with breakfast, lunch, dinner and snacks — all within your calorie budget.</p>
+                <h3><?= __('how_3_title') ?></h3>
+                <p><?= __('how_3_desc') ?></p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i data-lucide="trending-up"></i></div>
-                <h3>4. Track & Adapt</h3>
-                <p>Log your weight and mood weekly. KCALS adjusts your deficit zone to keep you on track without burning out.</p>
+                <h3><?= __('how_4_title') ?></h3>
+                <p><?= __('how_4_desc') ?></p>
             </div>
         </div>
     </div>
@@ -87,30 +88,30 @@ require_once __DIR__ . '/includes/header.php';
 <section class="section" style="background:var(--white); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
     <div class="container">
         <div class="text-center mb-3">
-            <h2>Your Psychological Zone</h2>
-            <p>Not everyone is ready for an aggressive deficit. KCALS respects your mental state.</p>
+            <h2><?= __('zone_title') ?></h2>
+            <p><?= __('zone_sub') ?></p>
         </div>
         <div class="feature-grid">
             <div class="card" style="border-left:4px solid var(--green);">
                 <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;">
-                    <span class="zone-badge green">🟢 Green Zone</span>
+                    <span class="zone-badge green"><?= __('zone_green_badge') ?></span>
                 </div>
-                <h3 style="margin-bottom:.5rem;">Aggressive Mode</h3>
-                <p>Low stress + high motivation. You're ready for a <strong>25% calorie deficit</strong> — maximum fat loss, sustainable pace.</p>
+                <h3 style="margin-bottom:.5rem;"><?= __('zone_green_title') ?></h3>
+                <p><?= __('zone_green_desc') ?></p>
             </div>
             <div class="card" style="border-left:4px solid var(--yellow);">
                 <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;">
-                    <span class="zone-badge yellow">🟡 Yellow Zone</span>
+                    <span class="zone-badge yellow"><?= __('zone_yellow_badge') ?></span>
                 </div>
-                <h3 style="margin-bottom:.5rem;">Balanced Mode</h3>
-                <p>Middle ground. A <strong>15% calorie deficit</strong> — steady progress without overwhelming your routine.</p>
+                <h3 style="margin-bottom:.5rem;"><?= __('zone_yellow_title') ?></h3>
+                <p><?= __('zone_yellow_desc') ?></p>
             </div>
             <div class="card" style="border-left:4px solid var(--red);">
                 <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;">
-                    <span class="zone-badge red">🔴 Red Zone</span>
+                    <span class="zone-badge red"><?= __('zone_red_badge') ?></span>
                 </div>
-                <h3 style="margin-bottom:.5rem;">Sustainable Mode</h3>
-                <p>High stress or low motivation. Just an <strong>8% deficit</strong> — build the habit first, results follow naturally.</p>
+                <h3 style="margin-bottom:.5rem;"><?= __('zone_red_title') ?></h3>
+                <p><?= __('zone_red_desc') ?></p>
             </div>
         </div>
     </div>
@@ -119,13 +120,14 @@ require_once __DIR__ . '/includes/header.php';
 <!-- ==================== CTA BOTTOM ==================== -->
 <section class="section text-center">
     <div class="container-sm">
-        <h2>Ready to start?</h2>
-        <p class="mt-1 mb-3">Create your free account and get your first personalised weekly plan in minutes.</p>
+        <h2><?= __('cta_title') ?></h2>
+        <p class="mt-1 mb-3"><?= __('cta_sub') ?></p>
         <a href="<?= BASE_URL ?>/register.php" class="btn btn-primary btn-lg">
             <i data-lucide="arrow-right" style="width:18px;height:18px;"></i>
-            Create Free Account
+            <?= __('cta_btn') ?>
         </a>
     </div>
 </section>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+

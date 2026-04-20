@@ -8,12 +8,14 @@
 // ============================================================
 require_once __DIR__ . '/auth.php';
 
-$pageTitle = $pageTitle ?? 'KCALS – Smart Nutrition';
-$activeNav = $activeNav ?? '';
+$pageTitle  = $pageTitle ?? 'KCALS – Smart Nutrition';
+$activeNav  = $activeNav ?? '';
 $isLoggedIn = isLoggedIn();
+$_lang      = $GLOBALS['_kcals_lang'] ?? 'en';
+$_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= htmlspecialchars($_lang) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,20 +41,33 @@ $isLoggedIn = isLoggedIn();
         <ul class="navbar-nav">
             <?php if ($isLoggedIn): ?>
                 <li><a href="<?= BASE_URL ?>/dashboard.php"  class="<?= $activeNav==='dashboard' ? 'active':'' ?>">
-                    <i data-lucide="layout-dashboard" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>Dashboard</a></li>
+                    <i data-lucide="layout-dashboard" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_dashboard') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/plan.php"        class="<?= $activeNav==='plan' ? 'active':'' ?>">
-                    <i data-lucide="calendar" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>My Plan</a></li>
+                    <i data-lucide="calendar" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_plan') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/progress.php"    class="<?= $activeNav==='progress' ? 'active':'' ?>">
-                    <i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>Progress</a></li>
+                    <i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_progress') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/tips.php"        class="<?= $activeNav==='tips' ? 'active':'' ?>">
-                    <i data-lucide="lightbulb" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i>Tips</a></li>
+                    <i data-lucide="lightbulb" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_tips') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/logout.php"      class="btn-nav">
-                    <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px;"></i>Logout</a></li>
+                    <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_logout') ?></a></li>
             <?php else: ?>
-                <li><a href="<?= BASE_URL ?>/index.php"   class="<?= $activeNav==='home' ? 'active':'' ?>">Home</a></li>
-                <li><a href="<?= BASE_URL ?>/login.php"   class="<?= $activeNav==='login' ? 'active':'' ?>">Login</a></li>
-                <li><a href="<?= BASE_URL ?>/register.php" class="btn-nav">Get Started</a></li>
+                <li><a href="<?= BASE_URL ?>/index.php"    class="<?= $activeNav==='home' ? 'active':'' ?>"><?= __('nav_home') ?></a></li>
+                <li><a href="<?= BASE_URL ?>/login.php"    class="<?= $activeNav==='login' ? 'active':'' ?>"><?= __('nav_login') ?></a></li>
+                <li><a href="<?= BASE_URL ?>/register.php" class="btn-nav"><?= __('nav_get_started') ?></a></li>
             <?php endif; ?>
         </ul>
+
+        <!-- Language Switcher -->
+        <div class="lang-switcher">
+            <a href="<?= BASE_URL ?>/lang/set.php?lang=en&back=<?= $_back ?>"
+               class="lang-btn<?= $_lang === 'en' ? ' active' : '' ?>" title="English">
+                🇬🇧 EN
+            </a>
+            <a href="<?= BASE_URL ?>/lang/set.php?lang=el&back=<?= $_back ?>"
+               class="lang-btn<?= $_lang === 'el' ? ' active' : '' ?>" title="Ελληνικά">
+                🇬🇷 EL
+            </a>
+        </div>
     </div>
 </nav>
+

@@ -23,7 +23,7 @@ $chartData   = array_reverse($allProgress);
 $latestProgress = $allProgress[0] ?? null;
 $stats = $latestProgress ? calculateUserStats($user, $latestProgress) : null;
 
-$pageTitle = 'Progress – KCALS';
+$pageTitle = __('progress_title');
 $activeNav = 'progress';
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -31,8 +31,8 @@ require_once __DIR__ . '/includes/header.php';
 <div style="max-width:1100px; margin:2rem auto; padding:0 1.25rem;">
 
     <div style="margin-bottom:1.75rem;">
-        <h1 style="font-size:1.5rem; margin-bottom:.25rem;">My Progress</h1>
-        <p class="text-small" style="color:var(--slate-mid);">Track your weight and wellness over time.</p>
+        <h1 style="font-size:1.5rem; margin-bottom:.25rem;"><?= __('progress_h1') ?></h1>
+        <p class="text-small" style="color:var(--slate-mid);"><?= __('progress_sub') ?></p>
     </div>
 
     <?php if ($stats): ?>
@@ -43,23 +43,23 @@ require_once __DIR__ . '/includes/header.php';
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['ideal_weight'] ?> kg</div>
-            <div class="stat-label">Ideal Weight</div>
+            <div class="stat-label"><?= __('stat_ideal_weight') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['weight_diff'] > 0 ? '+' : '' ?><?= $stats['weight_diff'] ?> kg</div>
-            <div class="stat-label">To Ideal Weight</div>
+            <div class="stat-label"><?= __('stat_to_ideal') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['weeks_to_goal'] > 0 ? $stats['weeks_to_goal'].' wk' : '✓ Goal!' ?></div>
-            <div class="stat-label">Est. Timeline</div>
+            <div class="stat-label"><?= __('stat_timeline') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['kg_per_week'] ?> kg</div>
-            <div class="stat-label">Per Week (est.)</div>
+            <div class="stat-label"><?= __('stat_per_week') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= count($allProgress) ?></div>
-            <div class="stat-label">Check-ins Logged</div>
+            <div class="stat-label"><?= __('stat_checkins') ?></div>
         </div>
     </div>
     <?php endif; ?>
@@ -69,11 +69,13 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-header">
             <div class="card-title">
                 <div class="icon-wrap"><i data-lucide="trending-down" style="width:16px;height:16px;"></i></div>
-                Weight Trend (last 30 entries)
+                    <?= __('progress_chart_title') ?>
             </div>
         </div>
         <?php if (count($chartData) > 1): ?>
         <div style="height:280px;">
+            <canvas id="weightChart"></canvas>
+        </div>
             <canvas id="weightChart"></canvas>
         </div>
         <script>
@@ -106,7 +108,7 @@ require_once __DIR__ . '/includes/header.php';
         });
         </script>
         <?php else: ?>
-        <p style="text-align:center; color:var(--slate-mid); padding:2rem;">Log at least 2 check-ins to see your trend chart.</p>
+        <p style="text-align:center; color:var(--slate-mid); padding:2rem;"><?= __('progress_chart_need') ?></p>
         <?php endif; ?>
     </div>
 
@@ -115,20 +117,20 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-header">
             <div class="card-title">
                 <div class="icon-wrap"><i data-lucide="list" style="width:16px;height:16px;"></i></div>
-                Check-in History
-            </div>
+                    <?= __('progress_history') ?>
+                </div>
         </div>
         <?php if ($allProgress): ?>
         <div style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; font-size:.85rem;">
                 <thead>
                     <tr style="border-bottom:2px solid var(--border);">
-                        <th style="padding:.6rem .75rem; text-align:left; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.5px;">Date</th>
-                        <th style="padding:.6rem .75rem; text-align:right; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;">Weight</th>
-                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;">Stress</th>
-                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;">Motivation</th>
-                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;">Zone</th>
-                        <th style="padding:.6rem .75rem; text-align:left; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;">Notes</th>
+                        <th style="padding:.6rem .75rem; text-align:left; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.5px;"><?= __('th_date') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:right; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_weight') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_stress') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_motivation') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_zone') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:left; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_notes') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -148,7 +150,7 @@ require_once __DIR__ . '/includes/header.php';
             </table>
         </div>
         <?php else: ?>
-        <p style="text-align:center; color:var(--slate-mid); padding:2rem;">No check-ins logged yet. <a href="<?= BASE_URL ?>/dashboard.php">Go to dashboard</a> to add your first.</p>
+        <p style="text-align:center; color:var(--slate-mid); padding:2rem;"><?= sprintf(__('progress_no_entries'), htmlspecialchars(BASE_URL . '/dashboard.php')) ?></p>
         <?php endif; ?>
     </div>
 

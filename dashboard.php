@@ -17,7 +17,7 @@ $checkinErrors  = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'checkin') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
-        $checkinErrors[] = 'Invalid submission.';
+        $checkinErrors[] = __('err_invalid_submit2');
     } else {
         $weightKg      = (float)  ($_POST['weight_kg']       ?? 0);
         $stressLevel   = (int)    ($_POST['stress_level']     ?? 5);
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $energyLevel   = (int)    ($_POST['energy_level']     ?? 5);
         $notes         = trim(    $_POST['notes']             ?? '');
 
-        if ($weightKg < 30 || $weightKg > 300) $checkinErrors[] = 'Weight must be between 30 and 300 kg.';
+        if ($weightKg < 30 || $weightKg > 300) $checkinErrors[] = __('err_weight_checkin');
 
         if (empty($checkinErrors)) {
             $upsert = $db->prepare('
@@ -77,7 +77,7 @@ $currentPlan = $planStmt->fetch();
 $tipsStmt = $db->query('SELECT * FROM health_tips ORDER BY RAND() LIMIT 3');
 $tips = $tipsStmt->fetchAll();
 
-$pageTitle = 'Dashboard – KCALS';
+$pageTitle = __('dash_title');
 $activeNav = 'dashboard';
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -87,14 +87,13 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Welcome banner -->
     <?php if (isset($_GET['welcome'])): ?>
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
-        <strong>Welcome to KCALS, <?= htmlspecialchars($user['full_name']) ?>!</strong>
-        Your account is ready. Generate your first weekly plan below.
+        <?= sprintf(__('dash_welcome_msg'), htmlspecialchars($user['full_name'])) ?>
     </div>
     <?php endif; ?>
 
     <?php if ($checkinSuccess): ?>
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
-        Check-in saved! Your stats have been updated.
+        <?= __('dash_checkin_saved') ?>
     </div>
     <?php endif; ?>
 
@@ -102,23 +101,23 @@ require_once __DIR__ . '/includes/header.php';
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.75rem;">
         <div>
             <h1 style="font-size:1.5rem; margin-bottom:.2rem;">
-                Hello, <?= htmlspecialchars($user['full_name']) ?> 👋
+                <?= sprintf(__('dash_hello'), htmlspecialchars($user['full_name'])) ?>
             </h1>
             <p class="text-small" style="color:var(--slate-mid);">
                 <?= date('l, d F Y') ?>
                 <?php if ($stats): ?>
-                 &bull; Zone: <span class="zone-badge <?= $stats['zone'] ?>" style="vertical-align:middle; font-size:0.72rem;"><?= strtoupper($stats['zone']) ?></span>
+                 &bull; <?= __('dash_zone') ?>: <span class="zone-badge <?= $stats['zone'] ?>" style="vertical-align:middle; font-size:0.72rem;"><?= strtoupper($stats['zone']) ?></span>
                 <?php endif; ?>
             </p>
         </div>
         <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
             <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary btn-sm">
                 <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
-                <?= $currentPlan ? 'View My Plan' : 'Generate Plan' ?>
+                <?= $currentPlan ? __('dash_view_plan') : __('dash_gen_plan') ?>
             </a>
             <a href="<?= BASE_URL ?>/progress.php" class="btn btn-outline btn-sm">
                 <i data-lucide="line-chart" style="width:14px;height:14px;"></i>
-                Progress
+                <?= __('dash_progress') ?>
             </a>
         </div>
     </div>
@@ -128,27 +127,27 @@ require_once __DIR__ . '/includes/header.php';
     <div class="stat-grid">
         <div class="stat-card">
             <div class="stat-value"><?= $stats['target_kcal'] ?></div>
-            <div class="stat-label">Daily Calories</div>
+            <div class="stat-label"><?= __('stat_daily_cal') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['bmr'] ?></div>
-            <div class="stat-label">BMR (kcal)</div>
+            <div class="stat-label"><?= __('stat_bmr') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['tdee'] ?></div>
-            <div class="stat-label">TDEE (kcal)</div>
+            <div class="stat-label"><?= __('stat_tdee') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value green"><?= $stats['weight'] ?> kg</div>
-            <div class="stat-label">Current Weight</div>
+            <div class="stat-label"><?= __('stat_curr_weight') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['ideal_weight'] ?> kg</div>
-            <div class="stat-label">Ideal Weight</div>
+            <div class="stat-label"><?= __('stat_ideal_weight') ?></div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $stats['weeks_to_goal'] > 0 ? $stats['weeks_to_goal'].' wk' : '✓' ?></div>
-            <div class="stat-label">Est. to Goal</div>
+            <div class="stat-label"><?= __('stat_est_goal') ?></div>
         </div>
     </div>
     <?php endif; ?>
@@ -162,31 +161,31 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-header">
                 <div class="card-title">
                     <div class="icon-wrap"><i data-lucide="pie-chart" style="width:16px;height:16px;"></i></div>
-                    Daily Macros
+                    <?= __('dash_macros') ?>
                 </div>
                 <span class="text-small" style="color:var(--slate-mid);"><?= $stats['target_kcal'] ?> kcal</span>
             </div>
             <?php $macros = calculateMacros($stats['target_kcal']); ?>
             <div class="macro-bars">
                 <div class="macro-row">
-                    <span class="macro-label">Protein</span>
+                    <span class="macro-label"><?= __('macro_protein') ?></span>
                     <div class="macro-bar-bg"><div class="macro-bar-fill protein" style="width:<?= min(100, round($macros['protein_g']/2)) ?>%;"></div></div>
                     <span class="macro-val"><?= $macros['protein_g'] ?>g</span>
                 </div>
                 <div class="macro-row">
-                    <span class="macro-label">Carbs</span>
+                    <span class="macro-label"><?= __('macro_carbs') ?></span>
                     <div class="macro-bar-bg"><div class="macro-bar-fill carbs" style="width:<?= min(100, round($macros['carbs_g']/3)) ?>%;"></div></div>
                     <span class="macro-val"><?= $macros['carbs_g'] ?>g</span>
                 </div>
                 <div class="macro-row">
-                    <span class="macro-label">Fat</span>
+                    <span class="macro-label"><?= __('macro_fat') ?></span>
                     <div class="macro-bar-bg"><div class="macro-bar-fill fat" style="width:<?= min(100, round($macros['fat_g']/1.5)) ?>%;"></div></div>
                     <span class="macro-val"><?= $macros['fat_g'] ?>g</span>
                 </div>
             </div>
             <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-size:.8rem; color:var(--slate-mid);">
-                <span>Daily deficit: <strong style="color:var(--slate);"><?= $stats['daily_deficit'] ?> kcal</strong></span>
-                <span>~<?= $stats['kg_per_week'] ?> kg/week</span>
+                <span><?= __('dash_deficit') ?> <strong style="color:var(--slate);"><?= $stats['daily_deficit'] ?> kcal</strong></span>
+                <span>~<?= $stats['kg_per_week'] ?> <?= __('dash_per_week') ?></span>
             </div>
         </div>
         <?php endif; ?>
@@ -196,7 +195,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-header">
                 <div class="card-title">
                     <div class="icon-wrap"><i data-lucide="trending-down" style="width:16px;height:16px;"></i></div>
-                    Weight History
+                    <?= __('dash_weight_hist') ?>
                 </div>
             </div>
             <?php if (count($progressRows) > 1): ?>
@@ -237,7 +236,7 @@ require_once __DIR__ . '/includes/header.php';
             <?php else: ?>
             <div style="text-align:center; padding:2rem 1rem; color:var(--slate-mid);">
                 <i data-lucide="bar-chart-2" style="width:32px;height:32px; opacity:.3; display:block; margin:0 auto .75rem;"></i>
-                Log a few check-ins to see your weight trend here.
+                <?= __('dash_no_chart') ?>
             </div>
             <?php endif; ?>
         </div>
@@ -251,7 +250,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-header">
                 <div class="card-title">
                     <div class="icon-wrap"><i data-lucide="clipboard-edit" style="width:16px;height:16px;"></i></div>
-                    Today's Check-in
+                    <?= __('dash_checkin_title') ?>
                 </div>
                 <span class="text-small text-muted"><?= date('d/m/Y') ?></span>
             </div>
@@ -263,45 +262,45 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="hidden" name="action"     value="checkin">
 
                 <div class="form-group">
-                    <label for="weight_kg">Weight today (kg)</label>
+                    <label for="weight_kg"><?= __('dash_weight_today') ?></label>
                     <input type="number" id="weight_kg" name="weight_kg" class="form-control"
                            value="<?= htmlspecialchars($latestProgress['weight_kg'] ?? '') ?>"
-                           step="0.1" min="30" max="300" placeholder="e.g. 70.5" required>
+                           step="0.1" min="30" max="300" placeholder="<?= htmlspecialchars(__('dash_weight_ph')) ?>" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Stress Level: <span id="stressVal" class="range-output"><?= $latestProgress['stress_level'] ?? 5 ?></span></label>
+                    <label><?= __('dash_stress') ?> <span id="stressVal" class="range-output"><?= $latestProgress['stress_level'] ?? 5 ?></span></label>
                     <input type="range" name="stress_level" id="stressRange" class="form-range"
                            min="1" max="10" value="<?= $latestProgress['stress_level'] ?? 5 ?>"
                            oninput="document.getElementById('stressVal').textContent=this.value">
-                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span>1 (very low)</span><span>10 (very high)</span></div>
+                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
 
                 <div class="form-group">
-                    <label>Motivation Level: <span id="motivationVal" class="range-output"><?= $latestProgress['motivation_level'] ?? 5 ?></span></label>
+                    <label><?= __('dash_motivation') ?> <span id="motivationVal" class="range-output"><?= $latestProgress['motivation_level'] ?? 5 ?></span></label>
                     <input type="range" name="motivation_level" id="motivationRange" class="form-range"
                            min="1" max="10" value="<?= $latestProgress['motivation_level'] ?? 5 ?>"
                            oninput="document.getElementById('motivationVal').textContent=this.value">
-                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span>1 (very low)</span><span>10 (very high)</span></div>
+                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
 
                 <div class="form-group">
-                    <label>Energy Level: <span id="energyVal" class="range-output"><?= $latestProgress['energy_level'] ?? 5 ?></span></label>
+                    <label><?= __('dash_energy') ?> <span id="energyVal" class="range-output"><?= $latestProgress['energy_level'] ?? 5 ?></span></label>
                     <input type="range" name="energy_level" id="energyRange" class="form-range"
                            min="1" max="10" value="<?= $latestProgress['energy_level'] ?? 5 ?>"
                            oninput="document.getElementById('energyVal').textContent=this.value">
-                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span>1 (very low)</span><span>10 (very high)</span></div>
+                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
 
                 <div class="form-group">
-                    <label for="notes">Notes (optional)</label>
+                    <label for="notes"><?= __('dash_notes') ?></label>
                     <textarea id="notes" name="notes" class="form-control" rows="2"
-                              placeholder="How are you feeling today?"><?= htmlspecialchars($latestProgress['notes'] ?? '') ?></textarea>
+                              placeholder="<?= htmlspecialchars(__('dash_notes_ph')) ?>"><?= htmlspecialchars($latestProgress['notes'] ?? '') ?></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">
                     <i data-lucide="save" style="width:15px;height:15px;"></i>
-                    Save Check-in
+                    <?= __('dash_save_checkin') ?>
                 </button>
             </form>
         </div>
@@ -311,9 +310,9 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-header">
                 <div class="card-title">
                     <div class="icon-wrap"><i data-lucide="lightbulb" style="width:16px;height:16px;"></i></div>
-                    Weekly Wellness Tips
+                    <?= __('dash_tips_title') ?>
                 </div>
-                <a href="<?= BASE_URL ?>/tips.php" class="text-small" style="color:var(--green-dark);">View all →</a>
+                <a href="<?= BASE_URL ?>/tips.php" class="text-small" style="color:var(--green-dark);"><?= __('dash_tips_all') ?></a>
             </div>
             <?php foreach ($tips as $tip): ?>
             <div class="tip-card mb-2">
@@ -327,7 +326,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <?php endforeach; ?>
             <?php if (empty($tips)): ?>
-            <p class="text-small" style="color:var(--slate-mid);">No tips available yet.</p>
+            <p class="text-small" style="color:var(--slate-mid);"><?= __('dash_no_tips') ?></p>
             <?php endif; ?>
         </div>
     </div>
@@ -343,10 +342,10 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-header">
             <div class="card-title">
                 <div class="icon-wrap"><i data-lucide="calendar" style="width:16px;height:16px;"></i></div>
-                Current Week Plan
+                <?= __('dash_plan_title') ?>
                 <span class="zone-badge <?= $zone ?>" style="margin-left:.5rem;"><?= strtoupper($zone) ?></span>
             </div>
-            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">View Full Plan</a>
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm"><?= __('dash_view_full') ?></a>
         </div>
         <div class="plan-grid">
             <?php foreach ($previewDays as $dayName => $dayMeals): ?>
@@ -374,7 +373,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
         <?php if (count($planData) > 3): ?>
         <div style="text-align:center; margin-top:1rem;">
-            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">See all 7 days →</a>
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm"><?= __('dash_see_all') ?></a>
         </div>
         <?php endif; ?>
     </div>
@@ -382,12 +381,12 @@ require_once __DIR__ . '/includes/header.php';
     <div class="card" style="text-align:center; padding:2.5rem;">
         <div style="margin-bottom:1rem;">
             <i data-lucide="calendar-x" style="width:48px;height:48px; color:var(--slate-light); display:block; margin:0 auto .75rem;"></i>
-            <h3 style="margin-bottom:.5rem;">No active plan this week</h3>
-            <p>Generate your personalised weekly meal plan based on your current stats.</p>
+            <h3 style="margin-bottom:.5rem;"><?= __('dash_no_plan_title') ?></h3>
+            <p><?= __('dash_no_plan_desc') ?></p>
         </div>
         <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary">
             <i data-lucide="wand-2" style="width:16px;height:16px;"></i>
-            Generate My Weekly Plan
+            <?= __('dash_gen_plan_btn') ?>
         </a>
     </div>
     <?php endif; ?>

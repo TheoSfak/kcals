@@ -24,24 +24,24 @@ $tips = $stmt->fetchAll();
 $categories = ['nutrition','fitness','beauty','mindset','sleep'];
 $icons = ['nutrition'=>'apple','fitness'=>'dumbbell','beauty'=>'sparkles','mindset'=>'brain','sleep'=>'moon'];
 
-$pageTitle = 'Wellness Tips – KCALS';
+$pageTitle = __('tips_title');
 $activeNav = 'tips';
 require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div style="max-width:1100px; margin:2rem auto; padding:0 1.25rem;">
     <div style="margin-bottom:1.75rem;">
-        <h1 style="font-size:1.5rem; margin-bottom:.5rem;">Wellness Tips</h1>
-        <p class="text-small" style="color:var(--slate-mid);">Science-backed tips for nutrition, fitness, beauty and mindset.</p>
+        <h1 style="font-size:1.5rem; margin-bottom:.5rem;"><?= __('tips_h1') ?></h1>
+        <p class="text-small" style="color:var(--slate-mid);"><?= __('tips_sub') ?></p>
     </div>
 
     <!-- Category Filter -->
     <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.5rem;">
-        <a href="<?= BASE_URL ?>/tips.php" class="btn btn-sm <?= $category==='' ? 'btn-primary' : 'btn-secondary' ?>">All</a>
+        <a href="<?= BASE_URL ?>/tips.php" class="btn btn-sm <?= $category==='' ? 'btn-primary' : 'btn-secondary' ?>"><?= __('tips_all') ?></a>
         <?php foreach ($categories as $cat): ?>
         <a href="<?= BASE_URL ?>/tips.php?category=<?= $cat ?>" class="btn btn-sm <?= $category===$cat ? 'btn-primary' : 'btn-secondary' ?>">
             <i data-lucide="<?= $icons[$cat] ?>" style="width:13px;height:13px;"></i>
-            <?= ucfirst($cat) ?>
+            <?= htmlspecialchars(__('cat_' . $cat)) ?>
         </a>
         <?php endforeach; ?>
     </div>
@@ -62,7 +62,7 @@ require_once __DIR__ . '/includes/header.php';
         <?php endforeach; ?>
     </div>
     <?php else: ?>
-    <p style="color:var(--slate-mid);">No tips found for this category.</p>
+    <p style="color:var(--slate-mid);"><?= __('tips_none') ?></p>
     <?php endif; ?>
 </div>
 

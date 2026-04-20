@@ -12,6 +12,9 @@ if (session_status() === PHP_SESSION_NONE) {
     ]);
 }
 
+// Load language helper (defines __() translation function)
+require_once __DIR__ . '/lang.php';
+
 // ------------------------------------------------------------------
 // CSRF helpers
 // ------------------------------------------------------------------

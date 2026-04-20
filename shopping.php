@@ -72,7 +72,7 @@ if ($plan) {
     }
 }
 
-$pageTitle = 'Shopping List – KCALS';
+$pageTitle = __('shopping_title');
 $activeNav = 'plan';
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -80,14 +80,14 @@ require_once __DIR__ . '/includes/header.php';
 <div style="max-width:820px; margin:2rem auto; padding:0 1.25rem;">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.75rem;">
         <div>
-            <h1 style="font-size:1.5rem; margin-bottom:.25rem;">Shopping List</h1>
-            <p class="text-small" style="color:var(--slate-mid);">All ingredients from your current weekly plan, ready to print.</p>
+            <h1 style="font-size:1.5rem; margin-bottom:.25rem;"><?= __('shopping_h1') ?></h1>
+            <p class="text-small" style="color:var(--slate-mid);"><?= __('shopping_sub') ?></p>
         </div>
         <div style="display:flex; gap:.75rem;">
-            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">← Back to Plan</a>
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm"><?= __('shopping_back') ?></a>
             <button onclick="window.print()" class="btn btn-primary btn-sm">
                 <i data-lucide="printer" style="width:14px;height:14px;"></i>
-                Print / Save PDF
+                <?= __('shopping_print') ?>
             </button>
         </div>
     </div>
@@ -95,12 +95,12 @@ require_once __DIR__ . '/includes/header.php';
     <?php if (!$plan): ?>
     <div class="card" style="text-align:center; padding:3rem;">
         <i data-lucide="shopping-cart" style="width:48px;height:48px; color:var(--slate-light); display:block; margin:0 auto 1rem;"></i>
-        <h3>No active plan found</h3>
-        <p style="margin:.5rem 0 1.5rem;">Generate a weekly plan first, then come back here for your shopping list.</p>
-        <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary">Generate Plan</a>
+        <h3><?= __('shopping_no_plan') ?></h3>
+        <p style="margin:.5rem 0 1.5rem;"><?= __('shopping_no_plan_desc') ?></p>
+        <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary"><?= __('shopping_gen_plan') ?></a>
     </div>
     <?php elseif (empty($shoppingList)): ?>
-    <div class="alert alert-warning">Could not build a shopping list from this plan's data.</div>
+    <div class="alert alert-warning"><?= __('shopping_no_data') ?></div>
     <?php else: ?>
 
     <div class="card">
@@ -110,7 +110,7 @@ require_once __DIR__ . '/includes/header.php';
                 <?= $plan['start_date'] ?> → <?= $plan['end_date'] ?>
             </div>
             <div style="font-size:.85rem; color:var(--slate-mid);">
-                <?= array_sum(array_map('count', $shoppingList)) ?> unique ingredients
+                <?= array_sum(array_map('count', $shoppingList)) ?> <?= __('shopping_ingredients') ?>
             </div>
         </div>
 

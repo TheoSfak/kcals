@@ -26,7 +26,7 @@ $genError  = '';
 
 if (isset($_GET['generate']) && $_GET['generate'] == '1') {
     if (!verifyCsrf($_GET['csrf'] ?? '')) {
-        $genError = 'Invalid request. Please try again.';
+        $genError = __('err_plan_invalid');
     } else {
         $currentMonth   = (int) date('n');
         $targetCalories = $stats['target_kcal'];
@@ -157,7 +157,7 @@ $planStmt->execute([$userId]);
 $plan = $planStmt->fetch();
 $planData = $plan ? json_decode($plan['plan_data_json'], true) : null;
 
-$pageTitle = 'My Weekly Plan – KCALS';
+$pageTitle = __('plan_title');
 $activeNav = 'plan';
 require_once __DIR__ . '/includes/header.php';
 
@@ -168,22 +168,22 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
 
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.75rem;">
         <div>
-            <h1 style="font-size:1.5rem; margin-bottom:.25rem;">My Weekly Plan</h1>
+            <h1 style="font-size:1.5rem; margin-bottom:.25rem;"><?= __('plan_h1') ?></h1>
             <p class="text-small" style="color:var(--slate-mid);">
-                Target: <strong><?= $stats['target_kcal'] ?> kcal/day</strong>
-                &bull; Zone: <span class="zone-badge <?= $stats['zone'] ?>" style="vertical-align:middle; font-size:.72rem;"><?= strtoupper($stats['zone']) ?></span>
-                &bull; Deficit: <strong><?= $stats['daily_deficit'] ?> kcal/day</strong>
+                <?= __('plan_target') ?> <strong><?= $stats['target_kcal'] ?> kcal/day</strong>
+                &bull; <?= __('plan_zone_lbl') ?> <span class="zone-badge <?= $stats['zone'] ?>" style="vertical-align:middle; font-size:.72rem;"><?= strtoupper($stats['zone']) ?></span>
+                &bull; <?= __('plan_deficit_lbl') ?> <strong><?= $stats['daily_deficit'] ?> kcal/day</strong>
             </p>
         </div>
         <div style="display:flex; gap:.75rem;">
             <a href="<?= htmlspecialchars($generateUrl) ?>" class="btn btn-primary">
                 <i data-lucide="wand-2" style="width:15px;height:15px;"></i>
-                <?= $plan ? 'Regenerate Plan' : 'Generate Plan' ?>
+                <?= $plan ? __('plan_regen') : __('plan_gen') ?>
             </a>
             <?php if ($plan): ?>
             <a href="<?= BASE_URL ?>/shopping.php" class="btn btn-outline">
                 <i data-lucide="shopping-cart" style="width:15px;height:15px;"></i>
-                Shopping List
+                <?= __('plan_shopping') ?>
             </a>
             <?php endif; ?>
         </div>
@@ -191,7 +191,7 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
 
     <?php if ($generated): ?>
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
-        <strong>Plan generated!</strong> Here is your personalised 7-day meal plan.
+        <strong><?= __('plan_generated') ?></strong> <?= __('plan_generated_desc') ?>
     </div>
     <?php endif; ?>
 
@@ -206,15 +206,15 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
             <div style="font-size:1.4rem; font-weight:800; color:var(--green-dark);"><?= $plan['target_calories'] ?></div>
-            <div class="text-small text-muted">Daily Kcal Target</div>
+            <div class="text-small text-muted"><?= __('plan_kcal_target') ?></div>
         </div>
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
             <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $plan['start_date'] ?></div>
-            <div class="text-small text-muted">Week Start</div>
+            <div class="text-small text-muted"><?= __('plan_week_start') ?></div>
         </div>
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
             <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $plan['end_date'] ?></div>
-            <div class="text-small text-muted">Week End</div>
+            <div class="text-small text-muted"><?= __('plan_week_end') ?></div>
         </div>
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
             <?php
@@ -223,7 +223,7 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 $avgKcal = count($planData) > 0 ? round($totalPlanKcal / count($planData)) : 0;
             ?>
             <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $avgKcal ?></div>
-            <div class="text-small text-muted">Avg kcal/day</div>
+            <div class="text-small text-muted"><?= __('plan_avg_kcal') ?></div>
         </div>
     </div>
     <?php endif; ?>
@@ -277,11 +277,11 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     <?php else: ?>
     <div class="card" style="text-align:center; padding:3rem 1.5rem;">
         <i data-lucide="calendar-x" style="width:56px;height:56px; color:var(--slate-light); display:block; margin:0 auto 1rem;"></i>
-        <h2 style="margin-bottom:.5rem;">No plan yet</h2>
-        <p style="max-width:400px; margin:0 auto 1.5rem;">Click the button above to generate your personalised 7-day meal plan based on your current calorie target and psychological zone.</p>
+        <h2 style="margin-bottom:.5rem;"><?= __('plan_no_plan') ?></h2>
+        <p style="max-width:400px; margin:0 auto 1.5rem;"><?= __('plan_no_plan_desc') ?></p>
         <a href="<?= htmlspecialchars($generateUrl) ?>" class="btn btn-primary btn-lg">
             <i data-lucide="wand-2" style="width:18px;height:18px;"></i>
-            Generate My Plan
+            <?= __('plan_gen_my') ?>
         </a>
     </div>
     <?php endif; ?>

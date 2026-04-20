@@ -1,6 +1,6 @@
 
     <footer>
-        <p>&copy; <?= date('Y') ?> <strong>KCALS</strong> &mdash; Smart Nutrition &amp; Wellness &bull; Built with Pure PHP &amp; MySQL</p>
+        <p>&copy; <?= date('Y') ?> <strong>KCALS</strong> &mdash; <?= __('footer_text') ?></p>
     </footer>
 
     <script>

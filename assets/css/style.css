@@ -670,3 +670,45 @@ footer {
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
     .stat-card .stat-value { font-size: 1.5rem; }
 }
+
+/* ---------- Language Switcher ---------- */
+.lang-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0.75rem;
+}
+
+.lang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--slate-mid);
+    border: 1px solid transparent;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+}
+
+.lang-btn:hover {
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--slate);
+    text-decoration: none;
+}
+
+.lang-btn.active {
+    background: var(--green-light);
+    border-color: var(--green);
+    color: var(--green-dark);
+}
+
+@media (max-width: 600px) {
+    .lang-switcher { margin-left: 0.25rem; }
+    .lang-btn { padding: 0.2rem 0.3rem; font-size: 0.68rem; }
+}

@@ -13,13 +13,13 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
-        $errors[] = 'Invalid submission. Please try again.';
+        $errors[] = __('err_invalid_submit');
     } else {
         $email    = trim($_POST['email']    ?? '');
         $password = $_POST['password'] ?? '';
 
         if (empty($email) || empty($password)) {
-            $errors[] = 'Please enter your email and password.';
+            $errors[] = __('err_email_empty');
         } else {
             $db   = getDB();
             $stmt = $db->prepare('SELECT id, email, password_hash, full_name FROM users WHERE email = ?');
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
 
             if (!$user || !password_verify($password, $user['password_hash'])) {
-                $errors[] = 'Incorrect email or password.';
+                $errors[] = __('err_credentials');
             } else {
                 loginUser((int)$user['id'], $user['email'], $user['full_name']);
                 header('Location: ' . BASE_URL . '/dashboard.php');
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Login – KCALS';
+$pageTitle = __('login_title');
 $activeNav = 'login';
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -45,42 +45,42 @@ require_once __DIR__ . '/includes/header.php';
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-logo">KCALS<span>.</span></div>
-        <p class="auth-subtitle">Welcome back! Log in to your account.</p>
+        <p class="auth-subtitle"><?= __('login_subtitle') ?></p>
 
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
-                <?php foreach ($errors as $e): ?><div><?= htmlspecialchars($e) ?></div><?php endforeach; ?>
+                <?php foreach ($errors as $e): ?><div><?= $e ?></div><?php endforeach; ?>
             </div>
         <?php endif; ?>
 
         <?php if (isset($_GET['registered'])): ?>
-            <div class="alert alert-success">Account created! You can now log in.</div>
+            <div class="alert alert-success"><?= __('login_registered') ?></div>
         <?php endif; ?>
 
         <form method="POST" action="<?= BASE_URL ?>/login.php" novalidate>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
 
             <div class="form-group">
-                <label for="email">Email Address</label>
+                <label for="email"><?= __('login_email') ?></label>
                 <input type="email" id="email" name="email" class="form-control"
                        value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
                        placeholder="you@example.com" autofocus required>
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password"><?= __('login_password') ?></label>
                 <input type="password" id="password" name="password" class="form-control"
-                       placeholder="Your password" required>
+                       placeholder="<?= htmlspecialchars(__('login_password_ph')) ?>" required>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block btn-lg mt-1">
                 <i data-lucide="log-in" style="width:18px;height:18px;"></i>
-                Log In
+                <?= __('login_btn') ?>
             </button>
         </form>
 
         <p class="text-center text-small mt-2" style="color:var(--slate-mid);">
-            No account yet? <a href="<?= BASE_URL ?>/register.php">Create one free</a>
+            <?= sprintf(__('login_register_link'), htmlspecialchars(BASE_URL . '/register.php')) ?>
         </p>
     </div>
 </div>
