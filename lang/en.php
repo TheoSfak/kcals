@@ -98,7 +98,8 @@ return [
     'err_age'               => 'You must be at least 16 years old to register.',
     'err_email_taken'       => 'This email is already registered. <a href="%s">Log in instead?</a>',
     'err_credentials'       => 'Incorrect email or password.',
-    'err_email_empty'       => 'Please enter your email and password.',
+    'err_account_disabled'  => 'Your account has been deactivated. Please contact support.',
+    'err_email_empty'       => 'Please enter your email and password.',,
     'err_plan_invalid'      => 'Invalid request. Please try again.',
 
     // ---- Login ----

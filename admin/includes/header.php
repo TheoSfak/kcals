@@ -37,6 +37,14 @@
         </div>
 
         <div class="admin-nav-section">
+            <div class="admin-nav-title">Management</div>
+            <a href="<?= BASE_URL ?>/admin/users.php"
+               class="admin-nav-link <?= ($activeAdmin ?? '') === 'users' ? 'active' : '' ?>">
+                <i data-lucide="users"></i>Users
+            </a>
+        </div>
+
+        <div class="admin-nav-section">
             <div class="admin-nav-title">Configuration</div>
             <a href="<?= BASE_URL ?>/admin/settings.php"
                class="admin-nav-link <?= ($activeAdmin ?? '') === 'settings' ? 'active' : '' ?>">
@@ -66,4 +74,4 @@
         </header>
 
         <div class="admin-content">
-            <div class="admin-content-inner">
+            <div class="admin-content-inner <?= htmlspecialchars($contentClass ?? '') ?>">
