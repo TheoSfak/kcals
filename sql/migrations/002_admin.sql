@@ -1,11 +1,11 @@
 -- ============================================================
 -- KCALS Migration 002 – Admin backoffice
--- Run once against the kcals database
+-- Fully idempotent — safe to run on an existing database.
 -- ============================================================
 
--- 1. Add admin flag to users
+-- 1. Add is_admin flag to users (IF NOT EXISTS — MariaDB 10.0+ / MySQL 8.0+)
 ALTER TABLE `users`
-    ADD COLUMN `is_admin` TINYINT(1) NOT NULL DEFAULT 0 AFTER `diet_type`;
+    ADD COLUMN IF NOT EXISTS `is_admin` TINYINT(1) NOT NULL DEFAULT 0 AFTER `diet_type`;
 
 -- 2. App-wide key/value settings store
 CREATE TABLE IF NOT EXISTS `settings` (
@@ -15,19 +15,17 @@ CREATE TABLE IF NOT EXISTS `settings` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Seed default SMTP settings (won't overwrite existing rows)
-INSERT INTO `settings` (`key`, `value`) VALUES
+-- 3. Seed default SMTP settings (INSERT IGNORE = safe to re-run)
+INSERT IGNORE INTO `settings` (`key`, `value`) VALUES
     ('smtp_host',       ''),
     ('smtp_port',       '587'),
     ('smtp_encryption', 'tls'),
     ('smtp_user',       ''),
     ('smtp_pass',       ''),
     ('smtp_from_name',  'KCALS'),
-    ('smtp_from_email', '')
-ON DUPLICATE KEY UPDATE `key` = `key`;
+    ('smtp_from_email', '');
 
 -- ============================================================
--- HOW TO GRANT ADMIN ACCESS
--- Replace the email below with your account and run:
+-- To grant admin access run:
 -- UPDATE `users` SET is_admin = 1 WHERE email = 'your@email.com';
 -- ============================================================
