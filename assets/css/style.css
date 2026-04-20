@@ -786,3 +786,98 @@ footer {
     .lang-switcher { margin-left: 0.25rem; }
     .lang-btn { padding: 0.2rem 0.3rem; font-size: 0.68rem; }
 }
+
+/* ---------- Disclaimer Modal ---------- */
+.disclaimer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(44, 62, 80, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+.disclaimer-overlay.visible {
+    display: flex;
+    animation: disclaimerFadeIn 0.35s ease forwards;
+}
+
+.disclaimer-overlay.hiding {
+    animation: disclaimerFadeOut 0.35s ease forwards;
+}
+
+@keyframes disclaimerFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes disclaimerFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+.disclaimer-modal {
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(44, 62, 80, 0.22);
+    padding: 2.5rem 2.25rem;
+    width: 100%;
+    max-width: 520px;
+    text-align: center;
+    animation: disclaimerSlideUp 0.38s cubic-bezier(.22,.68,0,1.2) forwards;
+}
+
+@keyframes disclaimerSlideUp {
+    from { transform: translateY(28px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.disclaimer-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #FEF9E7;
+    border: 2px solid #F39C12;
+    color: #F39C12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-size: 1.6rem;
+}
+
+.disclaimer-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.disclaimer-modal h2 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--slate);
+    margin-bottom: 1rem;
+}
+
+.disclaimer-modal p {
+    font-size: 0.92rem;
+    color: var(--slate-mid);
+    line-height: 1.7;
+    margin-bottom: 1.75rem;
+    text-align: left;
+}
+
+.disclaimer-modal strong {
+    color: var(--slate);
+    font-weight: 700;
+}
+
+@media (max-width: 480px) {
+    .disclaimer-modal { padding: 1.75rem 1.25rem; }
+    .disclaimer-modal h2 { font-size: 1.1rem; }
+}

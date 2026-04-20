@@ -219,4 +219,9 @@ return [
 
     // ---- Footer ----
     'footer_text'           => 'Smart Nutrition &amp; Wellness &bull; Built with Pure PHP &amp; MySQL',
+
+    // ---- Disclaimer Modal ----
+    'disclaimer_title'      => 'For Informational Use Only',
+    'disclaimer_body'       => 'KCALS provides calorie calculations and meal guidance for <strong>informational purposes only</strong>. The results are based on widely used formulas and are not personalised medical advice.<br><br>Before making any changes to your diet or lifestyle, always consult your <strong>doctor</strong> or a <strong>certified nutritionist / dietitian</strong>.',
+    'disclaimer_accept'     => 'I Understand & Accept',
 ];
