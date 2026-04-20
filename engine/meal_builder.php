@@ -93,9 +93,9 @@ class MealBuilder
             // Keto breakfast: protein/dairy + fat + keto-ok fruit (berries)
             $excl    = $usedWeek;
             $protein = $this->pick('protein|dairy', 'breakfast', $excl);
-            if ($protein) $excl[] = (int) $protein['food_id'];
+            if ($protein) $excl[] = (int) $protein['id'];
             $fat     = $this->pick('fat', 'breakfast', $excl);
-            if ($fat)     $excl[] = (int) $fat['food_id'];
+            if ($fat)     $excl[] = (int) $fat['id'];
             $fruit   = $this->pick('fruit', 'breakfast', $excl);
 
             $components = [];
@@ -108,11 +108,11 @@ class MealBuilder
         // Standard / vegan / vegetarian / paleo / gf
         $excl    = $usedWeek;
         $carb    = $this->pick('carb',          'breakfast', $excl);
-        if ($carb)    $excl[] = (int) $carb['food_id'];
+        if ($carb)    $excl[] = (int) $carb['id'];
         $protein = $this->pick('protein|dairy', 'breakfast', $excl);
-        if ($protein) $excl[] = (int) $protein['food_id'];
+        if ($protein) $excl[] = (int) $protein['id'];
         $fruit   = $this->pick('fruit',         'breakfast', $excl);
-        if ($fruit)   $excl[] = (int) $fruit['food_id'];
+        if ($fruit)   $excl[] = (int) $fruit['id'];
 
         $used = 0.0;
         $components = [];
@@ -158,17 +158,17 @@ class MealBuilder
 
         // Carb (skip for keto)
         $excl = $usedWeek;
-        if ($protein) $excl[] = (int) $protein['food_id'];
+        if ($protein) $excl[] = (int) $protein['id'];
 
         $carb = null;
         if (!$isKeto) {
             $carb = $this->pick('carb', $slot, $excl);
-            if ($carb) $excl[] = (int) $carb['food_id'];
+            if ($carb) $excl[] = (int) $carb['id'];
         }
 
         // Two different vegetables
         $veg1 = $this->pick('vegetable', $slot, $excl);
-        if ($veg1) $excl[] = (int) $veg1['food_id'];
+        if ($veg1) $excl[] = (int) $veg1['id'];
         $veg2 = $this->pick('vegetable', $slot, $excl);
 
         if (!$protein) return $this->fallback($slot, $target);
@@ -181,7 +181,7 @@ class MealBuilder
 
         if ($isKeto) {
             // No carb: shift budget to protein + extra fat + vegetables
-            $extraFat = $this->pick('fat', $slot, array_merge($usedWeek, [(int) $protein['food_id']]));
+            $extraFat = $this->pick('fat', $slot, array_merge($usedWeek, [(int) $protein['id']]));
             if ($protein)  $components[] = $this->calc($protein,  $remaining * 0.56);
             if ($extraFat) $components[] = $this->calc($extraFat, $remaining * 0.24);
             if ($veg1)     $components[] = $this->calc($veg1,     $remaining * 0.12);
@@ -204,15 +204,15 @@ class MealBuilder
 
         if ($roll === 0) {
             $main = $this->pick('fruit', 'snack', $excl);
-            if ($main) $excl[] = (int) $main['food_id'];
+            if ($main) $excl[] = (int) $main['id'];
             $sec  = $this->pick('fat',   'snack', $excl);
         } elseif ($roll === 1) {
             $main = $this->pick('dairy', 'snack', $excl);
-            if ($main) $excl[] = (int) $main['food_id'];
+            if ($main) $excl[] = (int) $main['id'];
             $sec  = $this->pick('fruit', 'snack', $excl);
         } else {
             $main = $this->pick('fruit', 'snack', $excl);
-            if ($main) $excl[] = (int) $main['food_id'];
+            if ($main) $excl[] = (int) $main['id'];
             $sec  = $this->pick('dairy', 'snack', $excl);
         }
 
