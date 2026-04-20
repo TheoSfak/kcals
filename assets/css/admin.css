@@ -313,6 +313,120 @@
 .admin-breadcrumb a { color: #5D6D7E; font-weight: 500; text-decoration: none; }
 .admin-breadcrumb a:hover { color: #27AE60; }
 
+/* ---- Settings Tabs ---- */
+.settings-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #E8EDF2;
+    margin-bottom: 1.75rem;
+}
+
+.settings-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1.25rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #7F8C8D;
+    transition: color 0.16s, border-color 0.16s;
+    white-space: nowrap;
+}
+
+.settings-tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.settings-tab-btn:hover { color: #2C3E50; }
+
+.settings-tab-btn.active {
+    color: #27AE60;
+    border-bottom-color: #27AE60;
+}
+
+.settings-tab-panel { display: none; }
+.settings-tab-panel.active { display: block; }
+
+/* ---- Update panel ---- */
+.update-version-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.update-ver-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 110px;
+    padding: 0.9rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #E8EDF2;
+    background: #F7F9FC;
+    text-align: center;
+}
+
+.update-ver-box .ver-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #95A5A6;
+    margin-bottom: 0.3rem;
+}
+
+.update-ver-box .ver-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #2C3E50;
+}
+
+.update-ver-box.latest .ver-value { color: #27AE60; }
+
+.update-arrow {
+    font-size: 1.3rem;
+    color: #BDC3C7;
+    flex-shrink: 0;
+}
+
+.update-log {
+    background: #1A252F;
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    color: #A9DFBF;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-top: 1rem;
+    display: none;
+}
+
+.update-log.visible { display: block; }
+
+.update-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+}
+
+.update-status-badge.up-to-date { background: #EAFAF1; color: #186A3B; }
+.update-status-badge.available  { background: #FEF9E7; color: #9A7D0A; }
+.update-status-badge.checking   { background: #EBF5FB; color: #1F618D; }
+.update-status-badge.error      { background: #FDEDEC; color: #922B21; }
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
     .admin-layout              { grid-template-columns: 1fr; }
