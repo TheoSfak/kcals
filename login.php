@@ -69,9 +69,29 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="form-group">
                 <label for="password"><?= __('login_password') ?></label>
-                <input type="password" id="password" name="password" class="form-control"
-                       placeholder="<?= htmlspecialchars(__('login_password_ph')) ?>" required>
+                <div class="input-icon-wrap">
+                    <input type="password" id="password" name="password" class="form-control"
+                           placeholder="<?= htmlspecialchars(__('login_password_ph')) ?>" required>
+                    <button type="button" class="input-toggle-btn" onclick="togglePwd('password','eye-login')" title="Show / hide password" aria-label="Show or hide password">
+                        <i data-lucide="eye" id="eye-login"></i>
+                    </button>
+                </div>
             </div>
+
+<script>
+function togglePwd(fieldId, iconId) {
+    var f = document.getElementById(fieldId);
+    var i = document.getElementById(iconId);
+    if (f.type === 'password') {
+        f.type = 'text';
+        i.setAttribute('data-lucide', 'eye-off');
+    } else {
+        f.type = 'password';
+        i.setAttribute('data-lucide', 'eye');
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+</script>
 
             <button type="submit" class="btn btn-primary btn-block btn-lg mt-1">
                 <i data-lucide="log-in" style="width:18px;height:18px;"></i>

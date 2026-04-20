@@ -125,14 +125,38 @@ require_once __DIR__ . '/includes/header.php';
             <div class="form-grid-2">
                 <div class="form-group">
                     <label for="password"><?= __('register_password') ?></label>
-                    <input type="password" id="password" name="password" class="form-control"
-                           placeholder="<?= htmlspecialchars(__('register_password_ph')) ?>" required>
+                    <div class="input-icon-wrap">
+                        <input type="password" id="password" name="password" class="form-control"
+                               placeholder="<?= htmlspecialchars(__('register_password_ph')) ?>" required>
+                        <button type="button" class="input-toggle-btn" onclick="togglePwd('password','eye-pw1')" title="Show / hide password" aria-label="Show or hide password">
+                            <i data-lucide="eye" id="eye-pw1"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="password2"><?= __('register_password2') ?></label>
-                    <input type="password" id="password2" name="password2" class="form-control"
-                           placeholder="<?= htmlspecialchars(__('register_password2_ph')) ?>" required>
+                    <div class="input-icon-wrap">
+                        <input type="password" id="password2" name="password2" class="form-control"
+                               placeholder="<?= htmlspecialchars(__('register_password2_ph')) ?>" required>
+                        <button type="button" class="input-toggle-btn" onclick="togglePwd('password2','eye-pw2')" title="Show / hide confirm password" aria-label="Show or hide confirm password">
+                            <i data-lucide="eye" id="eye-pw2"></i>
+                        </button>
+                    </div>
                 </div>
+<script>
+function togglePwd(fieldId, iconId) {
+    var f = document.getElementById(fieldId);
+    var i = document.getElementById(iconId);
+    if (f.type === 'password') {
+        f.type = 'text';
+        i.setAttribute('data-lucide', 'eye-off');
+    } else {
+        f.type = 'password';
+        i.setAttribute('data-lucide', 'eye');
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+</script>
             </div>
 
             <!-- Body Data -->
