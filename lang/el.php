@@ -218,6 +218,32 @@ return [
     'shopping_no_data'      => 'Δεν ήταν δυνατή η δημιουργία λίστας αγορών από τα δεδομένα του προγράμματος.',
     'shopping_ingredients'  => 'μοναδικά υλικά',
 
+    // ---- Day names ----
+    'day_monday'            => 'Δευτέρα',
+    'day_tuesday'           => 'Τρίτη',
+    'day_wednesday'         => 'Τετάρτη',
+    'day_thursday'          => 'Πέμπτη',
+    'day_friday'            => 'Παρασκευή',
+    'day_saturday'          => 'Σάββατο',
+    'day_sunday'            => 'Κυριακή',
+
+    // ---- Meal slots ----
+    'meal_slot_breakfast'   => 'Πρωινό',
+    'meal_slot_lunch'       => 'Μεσημεριανό',
+    'meal_slot_dinner'      => 'Βραδινό',
+    'meal_slot_snack'       => 'Σνακ',
+
+    // ---- Shopping food categories ----
+    'shopping_cat_protein'  => 'Πρωτεΐνες',
+    'shopping_cat_carb'     => 'Υδατάνθρακες',
+    'shopping_cat_vegetable'=> 'Λαχανικά',
+    'shopping_cat_fruit'    => 'Φρούτα',
+    'shopping_cat_fat'      => 'Λιπαρά',
+    'shopping_cat_dairy'    => 'Γαλακτοκομικά',
+    'shopping_cat_mixed'    => 'Διάφορα',
+    'shopping_regen_notice' => 'Αυτό το πρόγραμμα δημιουργήθηκε με το παλιό σύστημα. Παρακαλώ <a href="%s">δημιουργήστε ξανά το πρόγραμμά σας</a> για να λάβετε την πλήρη λίστα υλικών.',
+    'shopping_items'        => 'προϊόντα',
+
     // ---- Footer ----
     'footer_text'           => 'Έξυπνη Διατροφή &amp; Ευεξία &bull; Χτισμένο με Pure PHP &amp; MySQL',
 

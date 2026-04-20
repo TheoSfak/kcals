@@ -99,7 +99,7 @@ return [
     'err_email_taken'       => 'This email is already registered. <a href="%s">Log in instead?</a>',
     'err_credentials'       => 'Incorrect email or password.',
     'err_account_disabled'  => 'Your account has been deactivated. Please contact support.',
-    'err_email_empty'       => 'Please enter your email and password.',,
+    'err_email_empty'       => 'Please enter your email and password.',
     'err_plan_invalid'      => 'Invalid request. Please try again.',
 
     // ---- Login ----
@@ -217,6 +217,32 @@ return [
     'shopping_gen_plan'     => 'Generate Plan',
     'shopping_no_data'      => 'Could not build a shopping list from this plan\'s data.',
     'shopping_ingredients'  => 'unique ingredients',
+
+    // ---- Day names ----
+    'day_monday'            => 'Monday',
+    'day_tuesday'           => 'Tuesday',
+    'day_wednesday'         => 'Wednesday',
+    'day_thursday'          => 'Thursday',
+    'day_friday'            => 'Friday',
+    'day_saturday'          => 'Saturday',
+    'day_sunday'            => 'Sunday',
+
+    // ---- Meal slots ----
+    'meal_slot_breakfast'   => 'Breakfast',
+    'meal_slot_lunch'       => 'Lunch',
+    'meal_slot_dinner'      => 'Dinner',
+    'meal_slot_snack'       => 'Snack',
+
+    // ---- Shopping food categories ----
+    'shopping_cat_protein'  => 'Proteins',
+    'shopping_cat_carb'     => 'Carbs',
+    'shopping_cat_vegetable'=> 'Vegetables',
+    'shopping_cat_fruit'    => 'Fruits',
+    'shopping_cat_fat'      => 'Fats',
+    'shopping_cat_dairy'    => 'Dairy',
+    'shopping_cat_mixed'    => 'Misc',
+    'shopping_regen_notice' => 'This plan was generated with the old system. Please <a href="%s">regenerate your plan</a> to get the full ingredient list.',
+    'shopping_items'        => 'items',
 
     // ---- Footer ----
     'footer_text'           => 'Smart Nutrition &amp; Wellness &bull; Built with Pure PHP &amp; MySQL',

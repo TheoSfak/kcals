@@ -22,12 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = __('err_email_empty');
         } else {
             $db   = getDB();
-            $stmt = $db->prepare('SELECT id, email, password_hash, full_name FROM users WHERE email = ?');
+            $stmt = $db->prepare('SELECT id, email, password_hash, full_name, is_active FROM users WHERE email = ?');
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
             if (!$user || !password_verify($password, $user['password_hash'])) {
                 $errors[] = __('err_credentials');
+            } elseif (empty($user['is_active'])) {
+                $errors[] = __('err_account_disabled');
             } else {
                 loginUser((int)$user['id'], $user['email'], $user['full_name']);
                 header('Location: ' . BASE_URL . '/dashboard.php');

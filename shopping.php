@@ -15,61 +15,36 @@ $stmt = $db->prepare('SELECT * FROM weekly_plans WHERE user_id = ? ORDER BY crea
 $stmt->execute([$userId]);
 $plan = $stmt->fetch();
 
+// food_type → [food_key → {name_el, name_en, total_grams, food_type}]
 $shoppingList = [];
+$isNewFormat  = false;
 
 if ($plan) {
     $planData = json_decode($plan['plan_data_json'], true);
-    $recipeIds = [];
-    foreach ($planData as $meals) {
-        foreach ($meals as $meal) {
-            $recipeIds[] = (int) $meal['id'];
-        }
-    }
-    $recipeIds = array_unique($recipeIds);
-
-    if (!empty($recipeIds)) {
-        $placeholders = implode(',', array_fill(0, count($recipeIds), '?'));
-        $recipeStmt   = $db->prepare("SELECT id, title, ingredients_json, category FROM recipes WHERE id IN ($placeholders)");
-        $recipeStmt->execute($recipeIds);
-        $recipes = $recipeStmt->fetchAll();
-
-        // Aggregate ingredients
-        $rawItems = [];
-        foreach ($recipes as $recipe) {
-            $ingredients = json_decode($recipe['ingredients_json'], true) ?? [];
-            foreach ($ingredients as $item) {
-                $rawItems[] = trim($item);
-            }
-        }
-
-        // Deduplicate (basic merge by keyword)
-        $merged = [];
-        foreach ($rawItems as $item) {
-            // Extract the ingredient name (strip quantities)
-            $keyParts = preg_split('/\s+/', $item);
-            // Use last significant word or full string as key
-            $key = strtolower(implode(' ', array_slice($keyParts, -1)));
-            if (!isset($merged[$key])) {
-                $merged[$key] = $item;
-            } else {
-                // Keep the more detailed entry
-                if (strlen($item) > strlen($merged[$key])) {
-                    $merged[$key] = $item;
+    foreach ($planData as $dayMeals) {
+        foreach ($dayMeals as $meal) {
+            if (!isset($meal['components'])) continue; // old recipe format
+            $isNewFormat = true;
+            foreach ($meal['components'] as $comp) {
+                $key  = $comp['food_id'] > 0 ? 'f' . (int)$comp['food_id'] : 'olive_oil';
+                $type = $comp['food_type'] ?? 'mixed';
+                if (!isset($shoppingList[$type][$key])) {
+                    $shoppingList[$type][$key] = [
+                        'name_el'     => $comp['name_el'],
+                        'name_en'     => $comp['name_en'],
+                        'total_grams' => 0,
+                        'food_type'   => $type,
+                    ];
                 }
+                $shoppingList[$type][$key]['total_grams'] += (int)$comp['grams'];
             }
         }
-
-        // Group by first letter for display
-        $grouped = [];
-        foreach ($merged as $item) {
-            // Strip leading quantities (numbers + units) for grouping key
-            $clean  = preg_replace('/^\d+\s*(g|ml|kg|l|tbsp|tsp|cup|pcs?|slice|cloves?|pinch)?\s*/i', '', $item);
-            $letter = strtoupper(substr(trim($clean), 0, 1));
-            $grouped[$letter][] = $item;
-        }
-        ksort($grouped);
-        $shoppingList = $grouped;
     }
+    // Sort each category alphabetically by English name
+    foreach ($shoppingList as &$items) {
+        uasort($items, fn($a, $b) => strcmp($a['name_en'], $b['name_en']));
+    }
+    unset($items);
 }
 
 $pageTitle = __('shopping_title');
@@ -100,7 +75,13 @@ require_once __DIR__ . '/includes/header.php';
         <a href="<?= BASE_URL ?>/plan.php" class="btn btn-primary"><?= __('shopping_gen_plan') ?></a>
     </div>
     <?php elseif (empty($shoppingList)): ?>
-    <div class="alert alert-warning"><?= __('shopping_no_data') ?></div>
+    <div class="alert alert-warning">
+        <?php if (!$isNewFormat): ?>
+            <?= sprintf(__('shopping_regen_notice'), htmlspecialchars(BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken()))) ?>
+        <?php else: ?>
+            <?= __('shopping_no_data') ?>
+        <?php endif; ?>
+    </div>
     <?php else: ?>
 
     <div class="card">
@@ -110,19 +91,21 @@ require_once __DIR__ . '/includes/header.php';
                 <?= $plan['start_date'] ?> → <?= $plan['end_date'] ?>
             </div>
             <div style="font-size:.85rem; color:var(--slate-mid);">
-                <?= array_sum(array_map('count', $shoppingList)) ?> <?= __('shopping_ingredients') ?>
+                <?= array_sum(array_map('count', $shoppingList)) ?> <?= __('shopping_items') ?>
             </div>
         </div>
 
         <div style="columns:2; gap:2rem;">
-            <?php foreach ($shoppingList as $letter => $items): ?>
+            <?php foreach ($shoppingList as $type => $items): ?>
             <div style="break-inside:avoid; margin-bottom:1.25rem;">
-                <h3 style="font-size:.95rem; color:var(--green-dark); margin-bottom:.5rem; border-bottom:2px solid var(--green-light); padding-bottom:.25rem;"><?= $letter ?></h3>
+                <h3 style="font-size:.95rem; color:var(--green-dark); margin-bottom:.5rem; border-bottom:2px solid var(--green-light); padding-bottom:.25rem;"><?= __('shopping_cat_' . $type) ?></h3>
                 <ul style="list-style:none; padding:0;">
                     <?php foreach ($items as $item): ?>
-                    <li style="display:flex; align-items:flex-start; gap:.5rem; padding:.25rem 0; font-size:.88rem; color:var(--slate);">
-                        <span style="display:inline-block; width:16px; height:16px; border:2px solid var(--green); border-radius:4px; flex-shrink:0; margin-top:1px;"></span>
-                        <?= htmlspecialchars($item) ?>
+                    <?php $iName = ($GLOBALS['_kcals_lang'] === 'el') ? $item['name_el'] : $item['name_en']; ?>
+                    <li style="display:flex; align-items:center; gap:.5rem; padding:.25rem 0; font-size:.88rem; color:var(--slate);">
+                        <span style="display:inline-block; width:16px; height:16px; border:2px solid var(--green); border-radius:4px; flex-shrink:0;"></span>
+                        <span><?= htmlspecialchars($iName) ?></span>
+                        <span style="margin-left:auto; font-size:.8rem; color:var(--slate-mid); white-space:nowrap; font-weight:600;"><?= $item['total_grams'] ?>g</span>
                     </li>
                     <?php endforeach; ?>
                 </ul>

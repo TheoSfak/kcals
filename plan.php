@@ -47,84 +47,26 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         $dislikeStmt->execute([$userId]);
         $dislikes = array_column($dislikeStmt->fetchAll(), 'ingredient_name');
 
-        // Helper: pick a recipe for a given category, fitting calorie window ±20%
-        $pickRecipe = function(string $category, int $targetKcal, array $usedIdsThisWeek) use ($db, $currentMonth, $dietType, $dislikes): ?array {
-            $low  = (int) round($targetKcal * 0.80);
-            $high = (int) round($targetKcal * 1.20);
+        // Smart food-based meal builder
+        require_once __DIR__ . '/engine/meal_builder.php';
+        $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes);
 
-            $whereExtra = '';
-            $params     = [$category, $low, $high];
-
-            // Seasonal filter
-            $params[] = '%' . $currentMonth . '%';
-            $whereExtra .= ' AND available_months LIKE ?';
-
-            // Diet filter
-            if ($dietType === 'vegan' || $dietType === 'vegan_gf') {
-                $whereExtra .= ' AND is_vegan = 1';
-            }
-            if ($dietType === 'gluten_free' || $dietType === 'vegan_gf') {
-                $whereExtra .= ' AND is_gluten_free = 1';
-            }
-
-            // Exclude already-used IDs this week
-            $excludeSql = '';
-            if (!empty($usedIdsThisWeek)) {
-                $placeholders = implode(',', array_fill(0, count($usedIdsThisWeek), '?'));
-                $excludeSql   = " AND id NOT IN ($placeholders)";
-                $params       = array_merge($params, $usedIdsThisWeek);
-            }
-
-            $sql  = "SELECT * FROM recipes
-                     WHERE category = ? AND calories BETWEEN ? AND ?
-                     $whereExtra $excludeSql
-                     ORDER BY RAND() LIMIT 1";
-            $stmt = $db->prepare($sql);
-            $stmt->execute($params);
-            $recipe = $stmt->fetch();
-            if (!$recipe) return null;
-
-            // Client-side dislike check on ingredients JSON
-            if (!empty($dislikes)) {
-                $ingredients = strtolower($recipe['ingredients_json']);
-                foreach ($dislikes as $disliked) {
-                    if (strpos($ingredients, strtolower($disliked)) !== false) {
-                        // Try once more without the blacklist enforcement if no other option
-                        return null;
-                    }
-                }
-            }
-            return $recipe;
-        };
-
-        $dayNames  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-        $planData  = [];
-        $usedIds   = [];
+        $dayNames    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+        $planData    = [];
+        $usedFoodIds = []; // All food IDs used this week (for variety)
 
         foreach ($dayNames as $day) {
-            $dayMeals = [];
-            foreach ($mealTargets as $category => $kcalTarget) {
-                $recipe = $pickRecipe($category, $kcalTarget, $usedIds);
-                if (!$recipe) {
-                    // Fallback: ignore dislike / exclude constraints
-                    $stmt = $db->prepare(
-                        'SELECT * FROM recipes WHERE category = ? ORDER BY ABS(calories - ?) LIMIT 1'
-                    );
-                    $stmt->execute([$category, $kcalTarget]);
-                    $recipe = $stmt->fetch();
-                }
-                if ($recipe) {
-                    $dayMeals[] = [
-                        'id'          => (int) $recipe['id'],
-                        'title'       => $recipe['title'],
-                        'category'    => $recipe['category'],
-                        'calories'    => (int) $recipe['calories'],
-                        'protein_g'   => (int) $recipe['protein_g'],
-                        'carbs_g'     => (int) $recipe['carbs_g'],
-                        'fat_g'       => (int) $recipe['fat_g'],
-                        'prep_minutes'=> (int) $recipe['prep_minutes'],
-                    ];
-                    $usedIds[] = (int) $recipe['id'];
+            $dayMeals   = [];
+            $dayFoodIds = []; // Food IDs used in earlier slots today (avoid same protein lunch+dinner)
+
+            foreach ($mealTargets as $slot => $kcalTarget) {
+                $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                $dayMeals[] = $meal;
+                foreach ($meal['components'] as $c) {
+                    if ($c['food_id'] > 0) {
+                        $usedFoodIds[] = $c['food_id'];
+                        $dayFoodIds[]  = $c['food_id'];
+                    }
                 }
             }
             $planData[$day] = $dayMeals;
@@ -234,17 +176,23 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
         <?php $dayTotal = array_sum(array_column($meals, 'calories')); ?>
         <div class="day-card">
             <div class="day-card-header">
-                <span class="day-name"><?= htmlspecialchars($dayName) ?></span>
+                <span class="day-name"><?= __('day_' . strtolower($dayName)) ?></span>
                 <span class="day-kcal"><?= $dayTotal ?> kcal</span>
             </div>
             <div class="meal-list">
                 <?php foreach ($meals as $meal): ?>
+                <?php
+                    $mSlot = $meal['slot'] ?? $meal['category'] ?? 'lunch';
+                    $mName = ($GLOBALS['_kcals_lang'] === 'el')
+                        ? ($meal['name_el'] ?? $meal['title'] ?? '')
+                        : ($meal['name_en'] ?? $meal['title'] ?? '');
+                ?>
                 <div class="meal-item">
-                    <div class="meal-dot <?= htmlspecialchars($meal['category']) ?>"></div>
+                    <div class="meal-dot <?= htmlspecialchars($mSlot) ?>"></div>
                     <div class="meal-info">
-                        <div class="meal-type"><?= htmlspecialchars(ucfirst($meal['category'])) ?></div>
-                        <div class="meal-name" title="<?= htmlspecialchars($meal['title']) ?>">
-                            <?= htmlspecialchars($meal['title']) ?>
+                        <div class="meal-type"><?= __('meal_slot_' . $mSlot) ?></div>
+                        <div class="meal-name" title="<?= htmlspecialchars($mName) ?>">
+                            <?= htmlspecialchars($mName) ?>
                         </div>
                         <div class="text-small" style="color:var(--slate-light);">
                             P: <?= $meal['protein_g'] ?>g &bull;

@@ -351,7 +351,7 @@ require_once __DIR__ . '/includes/header.php';
             <?php foreach ($previewDays as $dayName => $dayMeals): ?>
             <div class="day-card">
                 <div class="day-card-header">
-                    <span class="day-name"><?= htmlspecialchars($dayName) ?></span>
+                    <span class="day-name"><?= __('day_' . strtolower($dayName)) ?></span>
                     <span class="day-kcal">
                         ~<?= array_sum(array_column($dayMeals, 'calories')) ?> kcal
                     </span>
@@ -359,10 +359,16 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="meal-list">
                     <?php foreach ($dayMeals as $meal): ?>
                     <div class="meal-item">
-                        <div class="meal-dot <?= htmlspecialchars($meal['category']) ?>"></div>
+                        <?php
+                        $mSlot = $meal['slot'] ?? $meal['category'] ?? 'lunch';
+                        $mName = ($GLOBALS['_kcals_lang'] === 'el')
+                            ? ($meal['name_el'] ?? $meal['title'] ?? '')
+                            : ($meal['name_en'] ?? $meal['title'] ?? '');
+                    ?>
+                    <div class="meal-dot <?= htmlspecialchars($mSlot) ?>"></div>
                         <div class="meal-info">
-                            <div class="meal-type"><?= htmlspecialchars($meal['category']) ?></div>
-                            <div class="meal-name"><?= htmlspecialchars($meal['title']) ?></div>
+                            <div class="meal-type"><?= __('meal_slot_' . $mSlot) ?></div>
+                            <div class="meal-name"><?= htmlspecialchars($mName) ?></div>
                         </div>
                         <span class="meal-kcal"><?= $meal['calories'] ?> kcal</span>
                     </div>
