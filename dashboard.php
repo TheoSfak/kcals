@@ -132,7 +132,7 @@ $progressRows = array_reverse($progStmt->fetchAll());
 // ---- Current week plan ----
 $planStmt = $db->prepare('
     SELECT * FROM weekly_plans
-    WHERE user_id = ? AND start_date <= CURDATE() AND end_date >= CURDATE()
+    WHERE user_id = ?
     ORDER BY created_at DESC LIMIT 1
 ');
 $planStmt->execute([$userId]);
