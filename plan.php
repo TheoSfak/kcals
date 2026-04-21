@@ -30,6 +30,18 @@ $isPlateau = detectPlateau($userId, $db);
 $latestSleep = (int) ($latestProgress['sleep_level'] ?? 5);
 $sleepBoost  = $latestSleep <= 4;
 
+// Workout Boost: vars derived from latest check-in (used for banner + plan generation)
+$latestWorkoutType    = $latestProgress['workout_type']    ?? '';
+$latestWorkoutMinutes = (int) ($latestProgress['workout_minutes'] ?? 0);
+$workoutBoost         = $latestWorkoutMinutes > 0 && !empty($latestWorkoutType);
+$strengthDay          = ($latestWorkoutType === 'strength' && $workoutBoost);
+$burnedKcal           = 0;
+if ($workoutBoost) {
+    $burnRates  = ['cardio' => 6, 'strength' => 4, 'yoga' => 3];
+    $burnRate   = $burnRates[$latestWorkoutType] ?? 5;
+    $burnedKcal = $latestWorkoutMinutes * $burnRate;
+}
+
 // ---- Generate / Regenerate Plan ----
 $generated = false;
 $genError  = '';
@@ -46,6 +58,12 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         if ($sleepBoost && !$isPlateau) {
             $targetCalories = (int) round(($stats['tdee'] + $stats['target_kcal']) / 2);
         }
+
+        // Workout Boost: add back burned calories to preserve the deficit
+        if ($workoutBoost) {
+            $targetCalories += $burnedKcal;
+        }
+        $strengthDay = ($latestWorkoutType === 'strength' && $workoutBoost);
         $zone           = $stats['zone'];
         $dietType       = $user['diet_type'];
 
@@ -70,6 +88,7 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
             'allergies'    => $activeAllergies,
             'excluded_ids' => $excludedIds,
             'sleep_boost'  => $sleepBoost,
+            'strength_day' => $strengthDay,
         ];
 
         // Smart food-based meal builder
@@ -198,6 +217,13 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     <div class="alert" style="background:#f3e5ff; border:1px solid #c39bd3; color:#6c3483; margin-bottom:1rem;">
         <strong><?= __('plan_sleep_notice') ?></strong>
         <?= sprintf(__('plan_sleep_desc'), $latestSleep) ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($workoutBoost): ?>
+    <div class="alert" style="background:#e8f8f0; border:1px solid #52be80; color:#1e6e42; margin-bottom:1rem;">
+        <strong><?= __('plan_workout_notice') ?></strong>
+        <?= sprintf(__('plan_workout_desc'), __('workout_' . $latestWorkoutType), $latestWorkoutMinutes, $burnedKcal) ?>
     </div>
     <?php endif; ?>
 

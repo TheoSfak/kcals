@@ -16,6 +16,7 @@ class MealBuilder
     private array  $allergies; // active allergen keys e.g. ['dairy','nuts']
     private array  $excluded;  // food IDs the user has explicitly excluded
     private bool   $sleepBoost; // true when latest sleep_level ≤ 4 (shifts macros toward protein)
+    private bool   $strengthDay; // true when last workout was strength training (further protein shift)
 
     /**
      * @param array $profile  Optional preference profile:
@@ -30,7 +31,8 @@ class MealBuilder
         $this->adventure  = (int) ($profile['adventure']    ?? 2);
         $this->allergies  = (array) ($profile['allergies']   ?? []);
         $this->excluded   = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
-        $this->sleepBoost = (bool) ($profile['sleep_boost'] ?? false);
+        $this->sleepBoost  = (bool) ($profile['sleep_boost']  ?? false);
+        $this->strengthDay = (bool) ($profile['strength_day'] ?? false);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -134,6 +136,12 @@ class MealBuilder
         $proteinRatio = $this->sleepBoost ? 0.42 : 0.28;
         $fruitRatio   = 0.24;
 
+        // Strength Day: push protein higher, cut carb further
+        if ($this->strengthDay) {
+            $carbRatio    = 0.26;
+            $proteinRatio = 0.50;
+        }
+
         if ($carb) {
             $kcal = $target * $carbRatio;
             $components[] = $this->calc($carb, $kcal);
@@ -207,6 +215,11 @@ class MealBuilder
             // Sleep Factor: shift budget toward protein when sleep quality is poor
             $proteinRatio = $this->sleepBoost ? 0.57 : 0.47;
             $carbRatio    = $this->sleepBoost ? 0.29 : 0.39;
+            // Strength Day: push protein even higher
+            if ($this->strengthDay) {
+                $proteinRatio = 0.62;
+                $carbRatio    = 0.24;
+            }
             if ($protein) $components[] = $this->calc($protein, $remaining * $proteinRatio);
             if ($carb)    $components[] = $this->calc($carb,    $remaining * $carbRatio);
             if ($veg1)    $components[] = $this->calc($veg1,    $remaining * 0.10);
@@ -221,8 +234,8 @@ class MealBuilder
     {
         $excl = $usedWeek;
 
-        if ($this->sleepBoost) {
-            // Sleep Factor: always choose a high-satiety dairy/protein snack
+        if ($this->sleepBoost || $this->strengthDay) {
+            // Sleep Factor / Strength Day: always choose a high-satiety dairy/protein snack
             $main = $this->pick('dairy|protein', 'snack', $excl);
             if ($main) $excl[] = (int) $main['id'];
             $sec  = $this->pick('fruit', 'snack', $excl);

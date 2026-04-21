@@ -174,6 +174,19 @@ return [
     'range_high'            => '10 (πολύ υψηλό)',
     'dash_notes'            => 'Σημειώσεις (προαιρετικά)',
     'dash_notes_ph'         => 'Πώς αισθάνεστε σήμερα;',
+
+    // ---- Workout Boost (v0.9.3) ----
+    'dash_workout'          => 'Γυμναστική Σήμερα:',
+    'workout_none'          => 'Χωρίς γυμναστική',
+    'workout_cardio'        => 'Καρδιαγγειακή',
+    'workout_strength'      => 'Προπόνηση Δύναμης',
+    'workout_yoga'          => 'Yoga / Ευλυγισία',
+    'dash_workout_minutes'  => 'Διάρκεια (λεπτά)',
+    'plan_workout_notice'   => 'Ενίσχυση Γυμναστικής Ενεργή 🏋️',
+    'plan_workout_desc'     => 'Το τελευταίο check-in καταγράφηκε %s (%d λεπτά). ~%d kcal προστέθηκαν στον ημερήσιο στόχο για να διατηρηθεί το έλλειμμα.',
+    'th_workout'            => 'Γυμναστική',
+    'err_workout_minutes'   => 'Η διάρκεια γυμναστικής πρέπει να είναι μεταξύ 1 και 300 λεπτών.',
+
     'dash_save_checkin'     => 'Αποθήκευση Check-in',
     'dash_tips_title'       => 'Εβδομαδιαίες Συμβουλές Ευεξίας',
     'dash_tips_all'         => 'Όλες →',

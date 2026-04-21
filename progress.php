@@ -148,6 +148,7 @@ require_once __DIR__ . '/includes/header.php';
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_stress') ?></th>
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_motivation') ?></th>
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase; color:#6c3483;"><?= __('th_sleep') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_workout') ?></th>
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_zone') ?></th>
                         <th style="padding:.6rem .75rem; text-align:left; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_notes') ?></th>
                     </tr>
@@ -162,6 +163,15 @@ require_once __DIR__ . '/includes/header.php';
                         <td style="padding:.65rem .75rem; text-align:center;"><?= $entry['stress_level'] ?>/10</td>
                         <td style="padding:.65rem .75rem; text-align:center;"><?= $entry['motivation_level'] ?>/10</td>
                         <td style="padding:.65rem .75rem; text-align:center; color:#6c3483; font-weight:600;"><?= isset($entry['sleep_level']) ? $entry['sleep_level'] . '/10' : '—' ?></td>
+                        <td style="padding:.65rem .75rem; text-align:center; font-size:.8rem; color:var(--slate);"><?php
+                            $wt = $entry['workout_type'] ?? '';
+                            $wm = (int)($entry['workout_minutes'] ?? 0);
+                            if ($wt && $wm > 0) {
+                                echo htmlspecialchars(__('workout_' . $wt)) . ' ' . $wm . ' min';
+                            } else {
+                                echo '—';
+                            }
+                        ?></td>
                         <td style="padding:.65rem .75rem; text-align:center;"><span class="zone-badge <?= $zone ?>"><?= strtoupper($zone) ?></span></td>
                         <td style="padding:.65rem .75rem; color:var(--slate-mid); font-size:.8rem;"><?= htmlspecialchars($entry['notes'] ?? '—') ?></td>
                     </tr>

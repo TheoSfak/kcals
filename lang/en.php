@@ -174,6 +174,19 @@ return [
     'range_high'            => '10 (very high)',
     'dash_notes'            => 'Notes (optional)',
     'dash_notes_ph'         => 'How are you feeling today?',
+
+    // ---- Workout Boost (v0.9.3) ----
+    'dash_workout'          => 'Workout Today:',
+    'workout_none'          => 'No workout',
+    'workout_cardio'        => 'Cardio',
+    'workout_strength'      => 'Strength Training',
+    'workout_yoga'          => 'Yoga / Flexibility',
+    'dash_workout_minutes'  => 'Duration (minutes)',
+    'plan_workout_notice'   => 'Workout Boost Active 🏋️',
+    'plan_workout_desc'     => 'Last check-in logged %s (%d min). ~%d kcal added back to your daily target to preserve your deficit.',
+    'th_workout'            => 'Workout',
+    'err_workout_minutes'   => 'Workout duration must be between 1 and 300 minutes.',
+
     'dash_save_checkin'     => 'Save Check-in',
     'dash_tips_title'       => 'Weekly Wellness Tips',
     'dash_tips_all'         => 'View all →',

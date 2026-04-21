@@ -5,12 +5,6 @@ Delete the entry from this file after the feature is fully implemented & committ
 
 ---
 
-## v0.9.3 — Workout Boost
-Add a "workout today" toggle + type selector (cardio / strength / yoga) + duration (minutes) to check-in.
-- Add burned calories back into that day's target (so the deficit is preserved, not deepened).
-- On strength training days: shift macro split to higher protein.
-- Store `workout_type` + `workout_minutes` in `user_progress`.
-
 ## v0.9.4 — Adaptive TDEE Recalibration
 Every 4 weeks, compare predicted vs actual weight loss.
 - If actual loss < 80% of predicted: recalculate TDEE downward and notify user.

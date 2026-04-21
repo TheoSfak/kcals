@@ -26,8 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $energyLevel   = (int)    ($_POST['energy_level']     ?? 5);
         $sleepLevel    = (int)    ($_POST['sleep_level']      ?? 5);
         $notes         = trim(    $_POST['notes']             ?? '');
+        $workoutType    = in_array($_POST['workout_type'] ?? '', ['cardio','strength','yoga'], true)
+                              ? $_POST['workout_type'] : null;
+        $workoutMinutes = max(0, (int) ($_POST['workout_minutes'] ?? 0));
 
         if ($weightKg < 30 || $weightKg > 300) $checkinErrors[] = __('err_weight_checkin');
+        if ($workoutType !== null && ($workoutMinutes < 1 || $workoutMinutes > 300)) {
+            $checkinErrors[] = __('err_workout_minutes');
+        }
 
         // ---- Realistic weight change guard ----
         if (empty($checkinErrors)) {
@@ -51,17 +57,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         if (empty($checkinErrors)) {
             $upsert = $db->prepare('
-                INSERT INTO user_progress (user_id, weight_kg, stress_level, motivation_level, energy_level, sleep_level, notes, entry_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())
+                INSERT INTO user_progress (user_id, weight_kg, stress_level, motivation_level, energy_level, sleep_level, notes, workout_type, workout_minutes, entry_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())
                 ON DUPLICATE KEY UPDATE
                     weight_kg        = VALUES(weight_kg),
                     stress_level     = VALUES(stress_level),
                     motivation_level = VALUES(motivation_level),
                     energy_level     = VALUES(energy_level),
                     sleep_level      = VALUES(sleep_level),
-                    notes            = VALUES(notes)
+                    notes            = VALUES(notes),
+                    workout_type     = VALUES(workout_type),
+                    workout_minutes  = VALUES(workout_minutes)
             ');
-            $upsert->execute([$userId, $weightKg, $stressLevel, $motivationLv, $energyLevel, $sleepLevel, $notes]);
+            $upsert->execute([$userId, $weightKg, $stressLevel, $motivationLv, $energyLevel, $sleepLevel, $notes, $workoutType, $workoutMinutes]);
             $checkinSuccess = true;
         }
     }
@@ -403,6 +411,24 @@ require_once __DIR__ . '/includes/header.php';
                            min="1" max="10" value="<?= $formData['energy_level'] ?? 5 ?>"
                            oninput="document.getElementById('energyVal').textContent=this.value">
                     <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="workout_type"><?= __('dash_workout') ?></label>
+                    <select id="workout_type" name="workout_type" class="form-control"
+                            onchange="document.getElementById('workoutDurationRow').style.display=this.value?'block':'none'">
+                        <option value=""<?= empty($formData['workout_type']) ? ' selected' : '' ?>><?= __('workout_none') ?></option>
+                        <option value="cardio"<?= ($formData['workout_type'] ?? '') === 'cardio' ? ' selected' : '' ?>><?= __('workout_cardio') ?></option>
+                        <option value="strength"<?= ($formData['workout_type'] ?? '') === 'strength' ? ' selected' : '' ?>><?= __('workout_strength') ?></option>
+                        <option value="yoga"<?= ($formData['workout_type'] ?? '') === 'yoga' ? ' selected' : '' ?>><?= __('workout_yoga') ?></option>
+                    </select>
+                </div>
+                <div class="form-group" id="workoutDurationRow"
+                     style="display:<?= !empty($formData['workout_type']) ? 'block' : 'none' ?>;">
+                    <label for="workout_minutes"><?= __('dash_workout_minutes') ?></label>
+                    <input type="number" id="workout_minutes" name="workout_minutes" class="form-control"
+                           value="<?= (int)($formData['workout_minutes'] ?? 0) ?>"
+                           min="1" max="300" placeholder="30">
                 </div>
 
                 <div class="form-group">
