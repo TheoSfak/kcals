@@ -74,6 +74,11 @@ function calculateUserStats(array $user, array $latestProgress): array {
     $bmr    = calculateBMR($weight, (int) $user['height_cm'], $age, $user['gender']);
     $tdee   = calculateTDEE($bmr, (float) $user['activity_level']);
 
+    // Adaptive TDEE Recalibration: use override if set
+    if (!empty($user['tdee_override'])) {
+        $tdee = (float) $user['tdee_override'];
+    }
+
     $stress     = (int) ($latestProgress['stress_level']     ?? 5);
     $motivation = (int) ($latestProgress['motivation_level'] ?? 5);
     $zone       = determineZone($stress, $motivation);
@@ -197,6 +202,105 @@ function detectPlateau(int $userId, PDO $db): bool
  *   - required_weekly  float  kg/week needed to reach goal in time
  *   - suggested_weight float  max safe weight achievable by event date
  *
+// ------------------------------------------------------------------
+// Adaptive TDEE Recalibration
+// ------------------------------------------------------------------
+/**
+ * Every 28+ days, compare predicted vs actual weight loss.
+ * If ratio falls outside 80–120%, compute true TDEE from observed
+ * deficit and store as tdee_override on the users row.
+ *
+ * Returns an info array on recalibration, null otherwise.
+ *
+ * @param int   $userId
+ * @param array $user    Row from users table (must include tdee_recalibrated_at)
+ * @param array $stats   Output of calculateUserStats() — used for daily_deficit & target_kcal & tdee
+ * @param PDO   $db
+ * @return array|null  ['old_tdee', 'new_tdee', 'delta', 'direction'] or null
+ */
+function recalibrateTDEE(int $userId, array $user, array $stats, PDO $db): ?array
+{
+    // Guard: don't recalibrate more than once per 28 days
+    if (!empty($user['tdee_recalibrated_at'])) {
+        $lastCal   = new DateTime($user['tdee_recalibrated_at']);
+        $daysSince = (int) (new DateTime())->diff($lastCal)->days;
+        if ($daysSince < 28) {
+            return null;
+        }
+    }
+
+    // Need a weight entry ≥28 days ago
+    $oldStmt = $db->prepare('
+        SELECT weight_kg, entry_date FROM user_progress
+        WHERE user_id = ? AND entry_date <= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
+        ORDER BY entry_date DESC LIMIT 1
+    ');
+    $oldStmt->execute([$userId]);
+    $oldRow = $oldStmt->fetch();
+    if (!$oldRow) {
+        return null;
+    }
+
+    // Need current (latest) weight
+    $newStmt = $db->prepare('
+        SELECT weight_kg, entry_date FROM user_progress
+        WHERE user_id = ? ORDER BY entry_date DESC LIMIT 1
+    ');
+    $newStmt->execute([$userId]);
+    $newRow = $newStmt->fetch();
+    if (!$newRow) {
+        return null;
+    }
+
+    $days = (int) ((strtotime($newRow['entry_date']) - strtotime($oldRow['entry_date'])) / 86400);
+    if ($days < 28) {
+        return null;
+    }
+
+    $actualKgLost    = (float) $oldRow['weight_kg'] - (float) $newRow['weight_kg'];
+    $predictedKgLost = ($stats['daily_deficit'] * $days) / 7700;
+
+    if ($predictedKgLost <= 0) {
+        return null; // Can't compare without a meaningful deficit
+    }
+
+    $ratio = $actualKgLost / $predictedKgLost;
+
+    // Only recalibrate if actual loss is outside 80–120% of predicted
+    if ($ratio >= 0.80 && $ratio <= 1.20) {
+        return null;
+    }
+
+    // True TDEE = target + actual_daily_deficit
+    $actualDailyDeficit = ($actualKgLost * 7700) / $days;
+    $newTdee = (int) round($stats['target_kcal'] + $actualDailyDeficit);
+    $oldTdee = $stats['tdee'];
+    $delta   = $newTdee - $oldTdee;
+
+    // Cap correction at ±500 kcal per cycle to avoid extreme swings
+    $delta   = max(-500, min(500, $delta));
+    $newTdee = $oldTdee + $delta;
+
+    // Persist
+    $upd = $db->prepare('
+        UPDATE users
+        SET tdee_override = ?, tdee_recalibrated_at = NOW(), tdee_recalibration_delta = ?
+        WHERE id = ?
+    ');
+    $upd->execute([$newTdee, $delta, $userId]);
+
+    return [
+        'old_tdee'  => $oldTdee,
+        'new_tdee'  => $newTdee,
+        'delta'     => $delta,
+        'direction' => $delta < 0 ? 'down' : 'up',
+    ];
+}
+
+// ------------------------------------------------------------------
+// Event Countdown: reachability check for a user's goal event
+// ------------------------------------------------------------------
+/**
  * @param float  $currentWeight
  * @param float  $goalWeight
  * @param string $goalDate       Y-m-d

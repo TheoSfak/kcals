@@ -303,6 +303,11 @@ return [
     'dash_plateau_title'    => 'Ανιχνεύτηκε Plateau!',
     'dash_plateau_desc'     => 'Το βάρος σας δεν έχει αλλάξει σημαντικά εδώ και 2+ εβδομάδες. Το επόμενο πρόγραμμα θα επαναφέρει αυτόματα στο TDEE για μία εβδομάδα για να επανεκκινήσει ο μεταβολισμός σας.',
 
+    // ---- Adaptive TDEE Recalibration (v0.9.4) ----
+    'dash_recal_title'      => 'TDEE Επαναβαθμολογήθηκε',
+    'dash_recal_down'       => 'Ο μεταβολισμός σας καίει λιγότερες θερμίδες από όπως αρχικά εκτιμήθηκε. Το TDEE διορθώθηκε από <strong>%d</strong> σε <strong>%d kcal/ημέρα</strong> (−%d kcal). Ο στόχος γεύματος αναβαθμίστηκε.',
+    'dash_recal_up'         => 'Ο μεταβολισμός σας είναι πιο δραστήριος από όπως εκτιμήθηκε. Το TDEE διορθώθηκε από <strong>%d</strong> σε <strong>%d kcal/ημέρα</strong> (+%d kcal). Ο στόχος γεύματος αναβαθμίστηκε.',
+
     // ---- Food Preferences / Interview ----
     'nav_preferences'       => 'Προτιμήσεις',
     'pref_page_title'       => 'Διατροφικές Προτιμήσεις – KCALS',

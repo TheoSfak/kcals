@@ -5,12 +5,6 @@ Delete the entry from this file after the feature is fully implemented & committ
 
 ---
 
-## v0.9.4 — Adaptive TDEE Recalibration
-Every 4 weeks, compare predicted vs actual weight loss.
-- If actual loss < 80% of predicted: recalculate TDEE downward and notify user.
-- If actual loss > 120% of predicted: recalculate TDEE upward (metabolism higher than estimated).
-- Show a "Your TDEE was recalibrated" card on the dashboard after each recalibration.
-
 ## v0.9.5 — Hormetic Recharge Day
 Once per week (configurable day, default Wednesday), automatically add +150 kcal above TDEE.
 - Fill that day's plan with complex-carb-heavy foods.

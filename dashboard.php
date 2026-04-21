@@ -92,6 +92,17 @@ if ($latestProgress) {
 }
 $isPlateau = $latestProgress ? detectPlateau($userId, $db) : false;
 
+// ---- Adaptive TDEE Recalibration ----
+$recalibration = null;
+if ($stats) {
+    $recalibration = recalibrateTDEE($userId, $user, $stats, $db);
+    if ($recalibration) {
+        // Re-fetch user with updated tdee_override, then recompute stats
+        $user  = getCurrentUser();
+        $stats = calculateUserStats($user, $latestProgress);
+    }
+}
+
 // ---- Event Countdown check ----
 $eventCountdown = null;
 if (
@@ -162,6 +173,19 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert" style="background:#f3e5ff; border:1px solid #c39bd3; color:#6c3483; margin-bottom:1.5rem;">
         <strong>😴 <?= __('dash_sleep_notice_title') ?></strong><br>
         <?= sprintf(__('dash_sleep_notice'), (int)$todayCheckin['sleep_level'], $sleepAdjusted) ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($recalibration): ?>
+    <div class="alert" style="background:#e8f4ff; border:1px solid #3498db; color:#1a5276; margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;">
+            <strong>📊 <?= __('dash_recal_title') ?></strong>
+        </div>
+        <?php if ($recalibration['direction'] === 'down'): ?>
+            <?= sprintf(__('dash_recal_down'), $recalibration['old_tdee'], $recalibration['new_tdee'], abs($recalibration['delta'])) ?>
+        <?php else: ?>
+            <?= sprintf(__('dash_recal_up'), $recalibration['old_tdee'], $recalibration['new_tdee'], abs($recalibration['delta'])) ?>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 

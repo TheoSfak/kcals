@@ -303,6 +303,11 @@ return [
     'dash_plateau_title'    => 'Plateau Detected!',
     'dash_plateau_desc'     => "Your weight hasn't changed significantly in 2+ weeks. Your next generated plan will automatically reset to TDEE for one week to reboot your metabolism.",
 
+    // ---- Adaptive TDEE Recalibration (v0.9.4) ----
+    'dash_recal_title'      => 'TDEE Recalibrated',
+    'dash_recal_down'       => 'Your metabolism burns fewer calories than initially estimated. TDEE adjusted from <strong>%d</strong> to <strong>%d kcal/day</strong> (−%d kcal). Your meal plan target has been updated.',
+    'dash_recal_up'         => 'Your metabolism is more active than estimated. TDEE adjusted from <strong>%d</strong> to <strong>%d kcal/day</strong> (+%d kcal). Your meal plan target has been updated.',
+
     // ---- Food Preferences / Interview ----
     'nav_preferences'       => 'Food Prefs',
     'pref_page_title'       => 'Food Preferences – KCALS',
