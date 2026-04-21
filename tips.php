@@ -58,7 +58,7 @@ require_once __DIR__ . '/includes/header.php';
             <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--green-dark); margin-bottom:.35rem;">
                 <?= htmlspecialchars($tip['category']) ?>
             </div>
-            <p class="tip-text"><?= htmlspecialchars($tip[$tipField]) ?></p>
+            <p class="tip-text"><?= htmlspecialchars($tip[$tipField] ?? $tip['tip_text']) ?></p>
         </div>
         <?php endforeach; ?>
     </div>
