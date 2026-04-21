@@ -84,6 +84,21 @@ if ($latestProgress) {
 }
 $isPlateau = $latestProgress ? detectPlateau($userId, $db) : false;
 
+// ---- Event Countdown check ----
+$eventCountdown = null;
+if (
+    $stats &&
+    !empty($user['goal_event_date']) &&
+    !empty($user['goal_weight_kg'])
+) {
+    $eventCountdown = calculateEventCountdown(
+        (float) $latestProgress['weight_kg'],
+        (float) $user['goal_weight_kg'],
+        $user['goal_event_date'],
+        (float) $stats['kg_per_week']
+    );
+}
+
 // ---- Last 7 progress entries (for chart) ----
 $progStmt = $db->prepare('
     SELECT entry_date, weight_kg
@@ -139,6 +154,41 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert" style="background:#f3e5ff; border:1px solid #c39bd3; color:#6c3483; margin-bottom:1.5rem;">
         <strong>😴 <?= __('dash_sleep_notice_title') ?></strong><br>
         <?= sprintf(__('dash_sleep_notice'), (int)$todayCheckin['sleep_level'], $sleepAdjusted) ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($eventCountdown): ?>
+    <?php
+        $evName     = htmlspecialchars($user['goal_event_name'] ?: __('event_h'));
+        $evDateFmt  = date('d/m/Y', strtotime($user['goal_event_date']));
+        $evDateStr  = htmlspecialchars($evDateFmt);
+        $evDays     = $eventCountdown['days_left'];
+        $evPast     = $evDays <= 0;
+        $evColor    = $evPast ? '#7f1d1d' : ($eventCountdown['reachable'] ? '#065f46' : '#92400e');
+        $evBg       = $evPast ? '#fee2e2' : ($eventCountdown['reachable'] ? '#d1fae5' : '#fff3cd');
+        $evBorder   = $evPast ? '#fca5a5' : ($eventCountdown['reachable'] ? '#6ee7b7' : '#fde68a');
+    ?>
+    <div class="alert" style="background:<?= $evBg ?>; border:1px solid <?= $evBorder ?>; color:<?= $evColor ?>; margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+            <strong>🎯 <?= sprintf(__('dash_event_title'), $evName) ?></strong>
+            <?php if (!$evPast): ?>
+            <span style="font-size:.85rem;font-weight:700;"><?= sprintf(__('dash_event_days'), $evDays) ?></span>
+            <?php endif; ?>
+        </div>
+        <div style="font-size:.85rem;margin-top:.35rem;">
+            <?php if ($evPast): ?>
+                <?= __('dash_event_past') ?>
+            <?php elseif ($eventCountdown['reachable']): ?>
+                <?= sprintf(__('dash_event_reachable'), $eventCountdown['required_weekly'], (float)$user['goal_weight_kg'], $evDateStr) ?>
+            <?php else: ?>
+                <?= sprintf(__('dash_event_warning'), $eventCountdown['required_weekly'], $eventCountdown['suggested_weight'], $evDateStr) ?>
+            <?php endif; ?>
+        </div>
+        <div style="margin-top:.5rem;">
+            <a href="<?= BASE_URL ?>/settings.php" style="font-size:.78rem;font-weight:600;color:<?= $evColor ?>;opacity:.8;">
+                <?= __('event_clear') ?> / <?= __('settings_h1') ?> →
+            </a>
+        </div>
     </div>
     <?php endif; ?>
 

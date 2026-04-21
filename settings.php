@@ -64,8 +64,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            header('Location: ' . BASE_URL . '/settings.php?saved=1');
-            exit;
+            // ---- Event Countdown ----
+            if (isset($_POST['action_event'])) {
+                if ($_POST['clear_event'] ?? '' === '1') {
+                    $db->prepare("UPDATE `users` SET `goal_event_name` = NULL, `goal_event_date` = NULL, `goal_weight_kg` = NULL WHERE `id` = ?")
+                       ->execute([$userId]);
+                } else {
+                    $evName   = trim($_POST['goal_event_name'] ?? '');
+                    $evDate   = trim($_POST['goal_event_date'] ?? '');
+                    $evWeight = (float) ($_POST['goal_weight_kg'] ?? 0);
+
+                    if ($evDate && $evDate <= date('Y-m-d')) {
+                        $errors[] = __('err_event_date');
+                    } elseif ($evWeight > 0 && ($evWeight < 30 || $evWeight > 300)) {
+                        $errors[] = __('err_event_weight');
+                    } else {
+                        $db->prepare("UPDATE `users` SET `goal_event_name` = ?, `goal_event_date` = ?, `goal_weight_kg` = ? WHERE `id` = ?")
+                           ->execute([
+                               $evName ?: null,
+                               $evDate ?: null,
+                               $evWeight > 0 ? $evWeight : null,
+                               $userId,
+                           ]);
+                    }
+                }
+            }
+
+            if (empty($errors)) {
+                header('Location: ' . BASE_URL . '/settings.php?saved=1');
+                exit;
+            }
 
         } catch (PDOException $e) {
             error_log('settings.php save error: ' . $e->getMessage());
@@ -294,6 +322,46 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="button" aria-label="Remove">&times;</button>
                 </div>
                 <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- ===== Goal Event ===== -->
+        <div class="settings-card">
+            <h3>🎯 <?= __('event_h') ?></h3>
+            <p style="font-size:.82rem;color:#64748b;margin:0 0 .875rem;"><?= __('event_sub') ?></p>
+            <input type="hidden" name="action_event" value="1">
+            <input type="hidden" name="clear_event"  id="s-clear-event" value="0">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:.82rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem;"><?= __('event_name_label') ?></label>
+                    <input type="text" name="goal_event_name" class="form-control"
+                           value="<?= htmlspecialchars($user['goal_event_name'] ?? '') ?>"
+                           placeholder="<?= htmlspecialchars(__('event_name_ph')) ?>"
+                           maxlength="120">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:.82rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem;"><?= __('event_date_label') ?></label>
+                    <input type="date" name="goal_event_date" class="form-control"
+                           value="<?= htmlspecialchars($user['goal_event_date'] ?? '') ?>"
+                           min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:.82rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem;"><?= __('event_weight_label') ?></label>
+                    <input type="number" name="goal_weight_kg" class="form-control"
+                           value="<?= htmlspecialchars($user['goal_weight_kg'] ?? '') ?>"
+                           step="0.1" min="30" max="300"
+                           placeholder="<?= htmlspecialchars(__('event_weight_ph')) ?>">
+                </div>
+                <?php if (!empty($user['goal_event_name']) || !empty($user['goal_event_date'])): ?>
+                <div style="display:flex;align-items:flex-end;">
+                    <button type="submit" class="btn btn-outline btn-sm"
+                            onclick="document.getElementById('s-clear-event').value='1';"
+                            style="color:#dc2626;border-color:#dc2626;">
+                        <i data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                        <?= __('event_clear') ?>
+                    </button>
+                </div>
                 <?php endif; ?>
             </div>
         </div>

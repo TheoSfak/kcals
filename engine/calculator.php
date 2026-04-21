@@ -183,3 +183,57 @@ function detectPlateau(int $userId, PDO $db): bool
 
     return $delta < 0.2;
 }
+
+// ------------------------------------------------------------------
+// Event Countdown: reachability check for a user's goal event
+// ------------------------------------------------------------------
+/**
+ * Given the user's current weight, goal weight, goal date and
+ * current kg_per_week rate, returns an array with:
+ *   - days_left        int
+ *   - weeks_left       float
+ *   - kg_to_lose       float  (positive = needs to lose)
+ *   - reachable        bool   (true if achievable at ≤0.7 kg/week)
+ *   - required_weekly  float  kg/week needed to reach goal in time
+ *   - suggested_weight float  max safe weight achievable by event date
+ *
+ * @param float  $currentWeight
+ * @param float  $goalWeight
+ * @param string $goalDate       Y-m-d
+ * @param float  $kgPerWeek      Current plan weekly loss rate
+ */
+function calculateEventCountdown(
+    float  $currentWeight,
+    float  $goalWeight,
+    string $goalDate,
+    float  $kgPerWeek
+): array {
+    $today    = new DateTime(date('Y-m-d'));
+    $event    = new DateTime($goalDate);
+    $daysLeft = (int) $today->diff($event)->days;
+
+    // If event is in the past treat as 0
+    if ($event <= $today) {
+        $daysLeft = 0;
+    }
+
+    $weeksLeft      = $daysLeft / 7.0;
+    $kgToLose       = round($currentWeight - $goalWeight, 2);
+
+    $requiredWeekly = $weeksLeft > 0 ? round($kgToLose / $weeksLeft, 2) : PHP_INT_MAX;
+
+    $maxSafe        = 0.7; // kg/week
+    $reachable      = $requiredWeekly <= $maxSafe;
+
+    // Max weight achievable safely by event date
+    $suggestedWeight = round($currentWeight - ($maxSafe * $weeksLeft), 1);
+
+    return [
+        'days_left'        => $daysLeft,
+        'weeks_left'       => round($weeksLeft, 1),
+        'kg_to_lose'       => $kgToLose,
+        'reachable'        => $reachable,
+        'required_weekly'  => $requiredWeekly,
+        'suggested_weight' => $suggestedWeight,
+    ];
+}

@@ -5,13 +5,6 @@ Delete the entry from this file after the feature is fully implemented & committ
 
 ---
 
-## v0.9.2 — Event Countdown
-User can set a goal event with a target date (e.g. "Wedding – 15/8/2026") from their profile/settings.
-- Calculate whether the goal weight is reachable by that date (max 0.7 kg/week safe limit).
-- If not reachable: show a friendly warning and suggest a revised target weight.
-- Automatically tighten or relax the weekly deficit each week as the event approaches.
-- Store `goal_event_name` + `goal_event_date` in `users` table.
-
 ## v0.9.3 — Workout Boost
 Add a "workout today" toggle + type selector (cardio / strength / yoga) + duration (minutes) to check-in.
 - Add burned calories back into that day's target (so the deficit is preserved, not deepened).
