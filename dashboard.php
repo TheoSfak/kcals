@@ -13,6 +13,7 @@ $userId = (int) $_SESSION['user_id'];
 
 // ---- Handle check-in form submission ----
 $checkinSuccess = false;
+$checkinIsEdit  = false;
 $checkinErrors  = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'checkin') {
@@ -26,6 +27,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $notes         = trim(    $_POST['notes']             ?? '');
 
         if ($weightKg < 30 || $weightKg > 300) $checkinErrors[] = __('err_weight_checkin');
+
+        // ---- Realistic weight change guard ----
+        if (empty($checkinErrors)) {
+            $prevStmt = $db->prepare('
+                SELECT weight_kg, entry_date FROM user_progress
+                WHERE user_id = ? AND entry_date < CURDATE()
+                ORDER BY entry_date DESC LIMIT 1
+            ');
+            $prevStmt->execute([$userId]);
+            $prevRow = $prevStmt->fetch();
+
+            if ($prevRow) {
+                $daysDiff  = (int) ((strtotime(date('Y-m-d')) - strtotime($prevRow['entry_date'])) / 86400);
+                $maxChange = max(1.0, $daysDiff * 1.0); // max 1 kg per day
+                $actualChange = abs($weightKg - (float) $prevRow['weight_kg']);
+                if ($actualChange > $maxChange) {
+                    $checkinErrors[] = sprintf(__('err_weight_unrealistic'), number_format($maxChange, 1), $prevRow['entry_date']);
+                }
+            }
+        }
 
         if (empty($checkinErrors)) {
             $upsert = $db->prepare('
@@ -46,6 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // ---- Load latest progress ----
 $latestProgress = getLatestProgress($userId);
+
+// ---- Check if user already checked in today (edit mode) ----
+$todayCheckin = null;
+$todayStmt = $db->prepare('SELECT * FROM user_progress WHERE user_id = ? AND entry_date = CURDATE()');
+$todayStmt->execute([$userId]);
+$todayCheckin = $todayStmt->fetch();
+$checkinIsEdit = !empty($todayCheckin);
 
 // ---- Stats ----
 $stats = null;
@@ -94,7 +122,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <?php if ($checkinSuccess): ?>
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
-        <?= __('dash_checkin_saved') ?>
+        <?= $checkinIsEdit ? __('dash_checkin_updated') : __('dash_checkin_saved') ?>
     </div>
     <?php endif; ?>
 
@@ -257,13 +285,23 @@ require_once __DIR__ . '/includes/header.php';
             <div class="card-header">
                 <div class="card-title">
                     <div class="icon-wrap"><i data-lucide="clipboard-edit" style="width:16px;height:16px;"></i></div>
-                    <?= __('dash_checkin_title') ?>
+                    <?= $checkinIsEdit ? __('dash_checkin_edit_title') : __('dash_checkin_title') ?>
                 </div>
                 <span class="text-small text-muted"><?= date('d/m/Y') ?></span>
             </div>
+            <?php if ($checkinIsEdit && !$checkinSuccess): ?>
+            <div style="padding:.5rem .75rem .25rem; font-size:.78rem; color:#856404; background:#fff8e1; border-bottom:1px solid #ffe082;">
+                <i data-lucide="pencil" style="width:12px;height:12px;vertical-align:-1px;"></i>
+                <?= __('dash_checkin_edit_notice') ?>
+            </div>
+            <?php endif; ?>
             <?php if (!empty($checkinErrors)): ?>
                 <div class="alert alert-error"><?= implode('<br>', array_map('htmlspecialchars', $checkinErrors)) ?></div>
             <?php endif; ?>
+            <?php
+                // Pre-fill from today's check-in if it exists, else from latest
+                $formData = $todayCheckin ?: $latestProgress;
+            ?>
             <form method="POST" action="<?= BASE_URL ?>/dashboard.php">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                 <input type="hidden" name="action"     value="checkin">
@@ -271,30 +309,30 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="form-group">
                     <label for="weight_kg"><?= __('dash_weight_today') ?></label>
                     <input type="number" id="weight_kg" name="weight_kg" class="form-control"
-                           value="<?= htmlspecialchars($latestProgress['weight_kg'] ?? '') ?>"
+                           value="<?= htmlspecialchars($formData['weight_kg'] ?? '') ?>"
                            step="0.1" min="30" max="300" placeholder="<?= htmlspecialchars(__('dash_weight_ph')) ?>" required>
                 </div>
 
                 <div class="form-group">
-                    <label><?= __('dash_stress') ?> <span id="stressVal" class="range-output"><?= $latestProgress['stress_level'] ?? 5 ?></span></label>
+                    <label><?= __('dash_stress') ?> <span id="stressVal" class="range-output"><?= $formData['stress_level'] ?? 5 ?></span></label>
                     <input type="range" name="stress_level" id="stressRange" class="form-range"
-                           min="1" max="10" value="<?= $latestProgress['stress_level'] ?? 5 ?>"
+                           min="1" max="10" value="<?= $formData['stress_level'] ?? 5 ?>"
                            oninput="document.getElementById('stressVal').textContent=this.value">
                     <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
 
                 <div class="form-group">
-                    <label><?= __('dash_motivation') ?> <span id="motivationVal" class="range-output"><?= $latestProgress['motivation_level'] ?? 5 ?></span></label>
+                    <label><?= __('dash_motivation') ?> <span id="motivationVal" class="range-output"><?= $formData['motivation_level'] ?? 5 ?></span></label>
                     <input type="range" name="motivation_level" id="motivationRange" class="form-range"
-                           min="1" max="10" value="<?= $latestProgress['motivation_level'] ?? 5 ?>"
+                           min="1" max="10" value="<?= $formData['motivation_level'] ?? 5 ?>"
                            oninput="document.getElementById('motivationVal').textContent=this.value">
                     <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
 
                 <div class="form-group">
-                    <label><?= __('dash_energy') ?> <span id="energyVal" class="range-output"><?= $latestProgress['energy_level'] ?? 5 ?></span></label>
+                    <label><?= __('dash_energy') ?> <span id="energyVal" class="range-output"><?= $formData['energy_level'] ?? 5 ?></span></label>
                     <input type="range" name="energy_level" id="energyRange" class="form-range"
-                           min="1" max="10" value="<?= $latestProgress['energy_level'] ?? 5 ?>"
+                           min="1" max="10" value="<?= $formData['energy_level'] ?? 5 ?>"
                            oninput="document.getElementById('energyVal').textContent=this.value">
                     <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
@@ -302,12 +340,12 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="form-group">
                     <label for="notes"><?= __('dash_notes') ?></label>
                     <textarea id="notes" name="notes" class="form-control" rows="2"
-                              placeholder="<?= htmlspecialchars(__('dash_notes_ph')) ?>"><?= htmlspecialchars($latestProgress['notes'] ?? '') ?></textarea>
+                              placeholder="<?= htmlspecialchars(__('dash_notes_ph')) ?>"><?= htmlspecialchars($formData['notes'] ?? '') ?></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">
-                    <i data-lucide="save" style="width:15px;height:15px;"></i>
-                    <?= __('dash_save_checkin') ?>
+                    <i data-lucide="<?= $checkinIsEdit ? 'pencil' : 'save' ?>" style="width:15px;height:15px;"></i>
+                    <?= $checkinIsEdit ? __('dash_update_checkin') : __('dash_save_checkin') ?>
                 </button>
             </form>
         </div>
