@@ -52,6 +52,7 @@ $stats = null;
 if ($latestProgress) {
     $stats = calculateUserStats($user, $latestProgress);
 }
+$isPlateau = $latestProgress ? detectPlateau($userId, $db) : false;
 
 // ---- Last 7 progress entries (for chart) ----
 $progStmt = $db->prepare('
@@ -94,6 +95,12 @@ require_once __DIR__ . '/includes/header.php';
     <?php if ($checkinSuccess): ?>
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
         <?= __('dash_checkin_saved') ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($isPlateau): ?>
+    <div class="alert" style="background:#fff3cd; border:1px solid #ffc107; color:#856404; margin-bottom:1.5rem;">
+        <strong><?= __('dash_plateau_title') ?></strong> <?= __('dash_plateau_desc') ?>
     </div>
     <?php endif; ?>
 

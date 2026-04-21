@@ -251,4 +251,12 @@ return [
     'disclaimer_title'      => 'For Informational Use Only',
     'disclaimer_body'       => 'KCALS provides calorie calculations and meal guidance for <strong>informational purposes only</strong>. The results are based on widely used formulas and are not personalised medical advice.<br><br>Before making any changes to your diet or lifestyle, always consult your <strong>doctor</strong> or a <strong>certified nutritionist / dietitian</strong>.',
     'disclaimer_accept'     => 'I Understand & Accept',
+
+    // ---- Plateau Breaker & Social Buffer ----
+    'plan_plateau_title'    => 'Plateau Breaker Active 📊',
+    'plan_plateau_desc'     => 'No significant weight change detected in the last 14+ days. This week your calorie target has been reset to <strong>100%% TDEE (%s kcal/day)</strong> to reboot your metabolism.',
+    'plan_buffer_title'     => 'Social Buffer Active 🎉',
+    'plan_buffer_desc'      => 'Mon–Fri: −150 kcal/day saved up. Saturday: +750 kcal bonus for social occasions — your weekly calorie balance stays intact.',
+    'dash_plateau_title'    => 'Plateau Detected!',
+    'dash_plateau_desc'     => "Your weight hasn't changed significantly in 2+ weeks. Your next generated plan will automatically reset to TDEE for one week to reboot your metabolism.",
 ];

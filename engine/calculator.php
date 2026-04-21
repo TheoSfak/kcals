@@ -118,3 +118,68 @@ function calculateMacros(int $targetCalories): array {
         'fat_g'     => (int) round(($targetCalories * 0.30) / 9),
     ];
 }
+
+// ------------------------------------------------------------------
+// Social Buffer: shave 150 kcal Mon–Fri, bank all savings on Saturday
+// Mon–Fri: -150 kcal/day  (5 × 150 = 750 saved)
+// Saturday: +750 kcal     (social occasions without breaking balance)
+// Sunday:   unchanged     (rest / recovery day)
+// ------------------------------------------------------------------
+const SOCIAL_BUFFER_KCAL = 150;
+
+/**
+ * Apply the Social Buffer shift to a base daily calorie target.
+ *
+ * @param int    $baseTarget  Base daily kcal (post zone-deficit)
+ * @param string $dayName     Full English day name, e.g. 'Monday'
+ */
+function applySocialBuffer(int $baseTarget, string $dayName): int
+{
+    return match (strtolower($dayName)) {
+        'monday', 'tuesday', 'wednesday', 'thursday', 'friday'
+            => $baseTarget - SOCIAL_BUFFER_KCAL,
+        'saturday'
+            => $baseTarget + (SOCIAL_BUFFER_KCAL * 5),
+        default
+            => $baseTarget, // Sunday: unchanged
+    };
+}
+
+// ------------------------------------------------------------------
+// Plateau Breaker: detect weight stagnation ≥14 days (<0.2 kg delta)
+// ------------------------------------------------------------------
+/**
+ * Returns true when the user's weight has barely changed over the past
+ * 14+ days (max–min delta < 0.2 kg across ≥3 entries spanning ≥14 days).
+ *
+ * @param int $userId
+ * @param PDO $db
+ */
+function detectPlateau(int $userId, PDO $db): bool
+{
+    $stmt = $db->prepare('
+        SELECT weight_kg, entry_date
+        FROM user_progress
+        WHERE user_id = ? AND entry_date >= DATE_SUB(CURDATE(), INTERVAL 21 DAY)
+        ORDER BY entry_date ASC
+    ');
+    $stmt->execute([$userId]);
+    $rows = $stmt->fetchAll();
+
+    if (count($rows) < 3) {
+        return false;
+    }
+
+    $oldest  = new DateTime($rows[0]['entry_date']);
+    $newest  = new DateTime($rows[count($rows) - 1]['entry_date']);
+    $daySpan = (int) $oldest->diff($newest)->days;
+
+    if ($daySpan < 14) {
+        return false;
+    }
+
+    $weights = array_column($rows, 'weight_kg');
+    $delta   = (float) max($weights) - (float) min($weights);
+
+    return $delta < 0.2;
+}

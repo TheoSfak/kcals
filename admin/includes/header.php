@@ -42,6 +42,10 @@
                class="admin-nav-link <?= ($activeAdmin ?? '') === 'users' ? 'active' : '' ?>">
                 <i data-lucide="users"></i>Users
             </a>
+            <a href="<?= BASE_URL ?>/admin/foods.php"
+               class="admin-nav-link <?= ($activeAdmin ?? '') === 'foods' ? 'active' : '' ?>">
+                <i data-lucide="salad"></i>Foods
+            </a>
         </div>
 
         <div class="admin-nav-section">

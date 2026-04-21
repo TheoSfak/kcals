@@ -19,6 +19,7 @@ if (!$latestProgress) {
 }
 
 $stats = calculateUserStats($user, $latestProgress);
+$isPlateau = detectPlateau($userId, $db);
 
 // ---- Generate / Regenerate Plan ----
 $generated = false;
@@ -29,18 +30,10 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         $genError = __('err_plan_invalid');
     } else {
         $currentMonth   = (int) date('n');
-        $targetCalories = $stats['target_kcal'];
+        // Plateau Breaker: if stagnation detected, reset to TDEE for metabolic shock
+        $targetCalories = $isPlateau ? $stats['tdee'] : $stats['target_kcal'];
         $zone           = $stats['zone'];
         $dietType       = $user['diet_type'];
-
-        // Meal calorie distribution (% of day):
-        // Breakfast 25%, Lunch 35%, Dinner 30%, Snack 10%
-        $mealTargets = [
-            'breakfast' => (int) round($targetCalories * 0.25),
-            'lunch'     => (int) round($targetCalories * 0.35),
-            'dinner'    => (int) round($targetCalories * 0.30),
-            'snack'     => (int) round($targetCalories * 0.10),
-        ];
 
         // Load user's disliked ingredients
         $dislikeStmt = $db->prepare('SELECT ingredient_name FROM user_dislikes WHERE user_id = ?');
@@ -58,6 +51,15 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         foreach ($dayNames as $day) {
             $dayMeals   = [];
             $dayFoodIds = []; // Food IDs used in earlier slots today (avoid same protein lunch+dinner)
+
+            // Social Buffer: adjust per-day target (−150 Mon–Fri, +750 Sat, unchanged Sun)
+            $dayTarget   = applySocialBuffer($targetCalories, $day);
+            $mealTargets = [
+                'breakfast' => (int) round($dayTarget * 0.25),
+                'lunch'     => (int) round($dayTarget * 0.35),
+                'dinner'    => (int) round($dayTarget * 0.30),
+                'snack'     => (int) round($dayTarget * 0.10),
+            ];
 
             foreach ($mealTargets as $slot => $kcalTarget) {
                 $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
@@ -140,6 +142,18 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     <?php if ($genError): ?>
     <div class="alert alert-error" style="margin-bottom:1.5rem;"><?= htmlspecialchars($genError) ?></div>
     <?php endif; ?>
+
+    <?php if ($isPlateau): ?>
+    <div class="alert" style="background:#fff3cd; border:1px solid #ffc107; color:#856404; margin-bottom:1.5rem;">
+        <strong><?= __('plan_plateau_title') ?></strong><br>
+        <?= sprintf(__('plan_plateau_desc'), number_format($stats['tdee'])) ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="alert" style="background:#e8f4ff; border:1px solid #90c7f5; color:#1a5276; margin-bottom:1rem;">
+        <strong><?= __('plan_buffer_title') ?></strong>
+        <?= __('plan_buffer_desc') ?>
+    </div>
 
     <?php if ($planData): ?>
 
