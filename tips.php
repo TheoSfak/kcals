@@ -23,6 +23,7 @@ $tips = $stmt->fetchAll();
 
 $categories = ['nutrition','fitness','beauty','mindset','sleep'];
 $icons = ['nutrition'=>'apple','fitness'=>'dumbbell','beauty'=>'sparkles','mindset'=>'brain','sleep'=>'moon'];
+$tipField = (($_SESSION['lang'] ?? 'en') === 'el') ? 'tip_text_el' : 'tip_text';
 
 $pageTitle = __('tips_title');
 $activeNav = 'tips';
@@ -57,7 +58,7 @@ require_once __DIR__ . '/includes/header.php';
             <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--green-dark); margin-bottom:.35rem;">
                 <?= htmlspecialchars($tip['category']) ?>
             </div>
-            <p class="tip-text"><?= htmlspecialchars($tip['tip_text']) ?></p>
+            <p class="tip-text"><?= htmlspecialchars($tip[$tipField]) ?></p>
         </div>
         <?php endforeach; ?>
     </div>
