@@ -9,16 +9,26 @@
 class MealBuilder
 {
     private PDO    $db;
-    private string $diet;    // standard|vegan|vegetarian|gf|vegan_gf|keto|paleo
+    private string $diet;      // standard|vegan|vegetarian|gf|vegan_gf|keto|paleo
     private int    $month;
-    private array  $dislikes; // lowercase strings to avoid
+    private array  $dislikes;  // lowercase strings to avoid
+    private int    $adventure; // 1=greek only, 2=mediterranean, 3=worldwide
+    private array  $allergies; // active allergen keys e.g. ['dairy','nuts']
+    private array  $excluded;  // food IDs the user has explicitly excluded
 
-    public function __construct(PDO $db, string $diet, int $month, array $dislikes = [])
+    /**
+     * @param array $profile  Optional preference profile:
+     *   ['adventure' => 2, 'allergies' => ['dairy','nuts'], 'excluded_ids' => [12,47]]
+     */
+    public function __construct(PDO $db, string $diet, int $month, array $dislikes = [], array $profile = [])
     {
         $this->db       = $db;
         $this->diet     = strtolower(trim($diet));
         $this->month    = $month;
         $this->dislikes = array_map('mb_strtolower', $dislikes);
+        $this->adventure = (int) ($profile['adventure']    ?? 2);
+        $this->allergies = (array) ($profile['allergies']   ?? []);
+        $this->excluded  = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
     }
 
     // ──────────────────────────────────────────────────────────
@@ -234,24 +244,48 @@ class MealBuilder
         $typePH     = implode(',', array_fill(0, count($types), '?'));
         $dietFilter = $this->dietFilter();
 
-        $ints = array_unique(
-            array_filter(array_map('intval', $excludeIds), fn($x) => $x > 0)
+        // Merge caller-supplied exclude list with user's permanent exclusions
+        $allExcludeIds = array_unique(
+            array_filter(
+                array_merge(array_map('intval', $excludeIds), $this->excluded),
+                fn($x) => $x > 0
+            )
         );
 
         $params   = $types;
         $params[] = '%' . $this->month . '%';
         $params[] = '%' . $slot . '%';
+
+        // Cuisine adventure filter
+        $cuisineSQL = '';
+        if ($this->adventure === 1) {
+            $cuisineSQL = " AND cuisine_tag IN ('universal','greek')";
+        } elseif ($this->adventure === 2) {
+            $cuisineSQL = " AND cuisine_tag IN ('universal','greek','mediterranean')";
+        }
+        // adventure === 3 → no filter (all cuisines)
+
+        // Allergen filter (each active allergy adds a NOT LIKE clause)
+        $allergenSQL = '';
+        $validAllergens = ['gluten','dairy','nuts','eggs','shellfish','soy'];
+        foreach ($this->allergies as $allergen) {
+            if (in_array($allergen, $validAllergens, true)) {
+                $allergenSQL .= " AND (allergen_tags = '' OR allergen_tags NOT LIKE ?)";
+                $params[]    = '%' . $allergen . '%';
+            }
+        }
+
         $excludeSQL = '';
-        if (!empty($ints)) {
-            $excludeSQL = ' AND id NOT IN (' . implode(',', array_fill(0, count($ints), '?')) . ')';
-            $params     = array_merge($params, $ints);
+        if (!empty($allExcludeIds)) {
+            $excludeSQL = ' AND id NOT IN (' . implode(',', array_fill(0, count($allExcludeIds), '?')) . ')';
+            $params     = array_merge($params, $allExcludeIds);
         }
 
         $sql  = "SELECT * FROM foods
                  WHERE food_type IN ($typePH)
                    AND available_months LIKE ?
                    AND meal_slots      LIKE ?
-                   $dietFilter $excludeSQL
+                   $dietFilter $cuisineSQL $allergenSQL $excludeSQL
                  ORDER BY RAND() LIMIT 6";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -262,8 +296,8 @@ class MealBuilder
             if (!$this->isDisliked($food)) return $food;
         }
 
-        // Relax variety constraint and retry once
-        if (!empty($ints)) {
+        // Relax variety constraint and retry once (keep allergen + cuisine filters)
+        if (!empty($excludeIds)) {
             return $this->pick($typeExpr, $slot, []);
         }
         return null;

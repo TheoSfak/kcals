@@ -77,6 +77,8 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
                     <i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_progress') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/tips.php"        class="<?= $activeNav==='tips' ? 'active':'' ?>">
                     <i data-lucide="lightbulb" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_tips') ?></a></li>
+                <li><a href="<?= BASE_URL ?>/settings.php"    class="<?= $activeNav==='preferences' ? 'active':'' ?>">
+                    <i data-lucide="sliders-horizontal" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_preferences') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/logout.php"      class="btn-nav">
                     <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_logout') ?></a></li>
             <?php else: ?>

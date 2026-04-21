@@ -412,12 +412,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   (`name_en`, `name_el`, `food_type`, `meal_slots`,
                    `cal_per_100g`, `protein_per_100g`, `carbs_per_100g`, `fat_per_100g`,
                    `is_vegan`, `is_vegetarian`, `is_gluten_free`, `is_keto_ok`, `is_paleo_ok`,
-                   `available_months`, `min_serving_g`, `max_serving_g`, `prep_minutes`)
-                VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?)
+                   `available_months`, `min_serving_g`, `max_serving_g`, `prep_minutes`,
+                   `cuisine_tag`, `allergen_tags`)
+                VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?, ?,?)
             ');
 
             foreach ($foods as $f) {
+                // Append default cuisine_tag = 'universal', allergen_tags = ''
+                $f[] = 'universal';
+                $f[] = '';
                 $stmt->execute($f);
+            }
+
+            // ── Cuisine tag overrides ────────────────────────────────
+            // Greek
+            $greek_foods = [
+                'Tzatziki','Taramasalata','Spanakopita (spinach pie)','Tiropita (cheese pie)',
+                'Greek Salad','Fasolada (bean soup)','Revithada (chickpea soup)','Moussaka',
+                'Pastitsio','Gemista (stuffed vegetables)','Stifado (beef stew)',
+                'Briami (vegetable medley)','Gigantes Plaki (baked beans)','Imam Baildi',
+                'Htipiti (feta dip)','Kolokithokeftedes (zucchini fritters)',
+                'Dakos (Cretan rusk salad)','Saganaki (fried cheese)',
+                'Chicken Souvlaki','Pork Souvlaki','Chicken Gyros','Beef Kebab',
+                'Mezedes Plate','Kalamata Olives',
+                'Octopus (cooked)','Greek Yogurt with Honey & Nuts',
+            ];
+            foreach ($greek_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `cuisine_tag`='greek' WHERE `name_en`=?")->execute([$name]);
+            }
+
+            // Mediterranean
+            $med_foods = [
+                'Hummus','Hummus with Veggies','Shakshuka','Falafel',
+                'Dal (Indian lentils)','Risotto (mushroom)','Paella (seafood)',
+                'Minestrone Soup','Beef Lentil Stew','Tapenade',
+                'Pesto Pasta','Aglio e Olio','Lentil Soup',
+            ];
+            foreach ($med_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `cuisine_tag`='mediterranean' WHERE `name_en`=?")->execute([$name]);
+            }
+
+            // International
+            $intl_foods = [
+                'Poke Bowl','Stir Fry Vegetables with Tofu','Beef Stir Fry',
+                'Nori Rolls / Sushi','Rice Paper Rolls','Acai Bowl','Smoothie Bowl',
+                'Teriyaki Chicken','Chicken Tikka Masala',
+                'Buddha Bowl',
+            ];
+            foreach ($intl_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `cuisine_tag`='international' WHERE `name_en`=?")->execute([$name]);
+            }
+
+            // ── Allergen tag overrides ────────────────────────────────
+            // Dairy
+            $dairy_foods = [
+                'Whole Milk','Cow Milk (3.5%)','Greek Yogurt (2%)','Greek Yogurt (0%)','Greek Yogurt (Full Fat)',
+                'Skyr (Icelandic yogurt)','Kefir','Butter','Ghee','Cream Cheese','Ricotta',
+                'Cottage Cheese','Feta Cheese','Halloumi','Parmesan','Cheddar Cheese',
+                'Mozzarella','Gouda','Brie','Swiss Cheese','Milk (2%)','Tzatziki',
+                'Tzatziki Sauce','Saganaki (fried cheese)','Tiropita (cheese pie)',
+                'Htipiti (feta dip)','Moussaka','Pastitsio','Greek Salad',
+                'Cottage Cheese with Fruit','Greek Yogurt with Berries',
+                'Greek Yogurt with Honey & Nuts','Whole Milk','Soy Milk (unsweetened)',
+                'Oat Milk','Almond Milk (unsweetened)',
+            ];
+            foreach ($dairy_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `allergen_tags`=CONCAT(CASE WHEN `allergen_tags`='' THEN '' ELSE CONCAT(`allergen_tags`,',') END,'dairy') WHERE `name_en`=? AND (`allergen_tags`='' OR `allergen_tags` NOT LIKE '%dairy%')")->execute([$name]);
+            }
+
+            // Gluten
+            $gluten_foods = [
+                'Wheat Bread','Sourdough Bread','Whole-Wheat Bread','Rye Bread',
+                'White Pasta (cooked)','Whole-Wheat Pasta (cooked)','Oats (rolled)',
+                'Oats (steel-cut)','Barley','Rye','Semolina',
+                'Spanakopita (spinach pie)','Tiropita (cheese pie)','Pastitsio',
+                'Dakos (Cretan rusk salad)','Pesto Pasta','Aglio e Olio',
+                'Tuna Wrap','Chicken Wrap','Avocado Toast','Granola','Muesli (no sugar)',
+                'Overnight Oats','Beef Bolognese','Protein Pancakes',
+            ];
+            foreach ($gluten_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `allergen_tags`=CONCAT(CASE WHEN `allergen_tags`='' THEN '' ELSE CONCAT(`allergen_tags`,',') END,'gluten') WHERE `name_en`=? AND (`allergen_tags`='' OR `allergen_tags` NOT LIKE '%gluten%')")->execute([$name]);
+            }
+
+            // Nuts
+            $nut_foods = [
+                'Walnuts','Almonds','Cashews','Pistachios','Hazelnuts','Macadamia Nuts',
+                'Brazil Nuts','Pine Nuts','Pecans','Mixed Nuts',
+                'Peanut Butter','Almond Butter','Tahini','Almond Milk (unsweetened)',
+                'Energy Ball (oat & nut)','Apple with Almond Butter',
+                'Banana with Peanut Butter','Celery with Peanut Butter',
+                'Fruit & Nut Bar','Greek Yogurt with Honey & Nuts','Pesto','Peanut Sauce',
+            ];
+            foreach ($nut_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `allergen_tags`=CONCAT(CASE WHEN `allergen_tags`='' THEN '' ELSE CONCAT(`allergen_tags`,',') END,'nuts') WHERE `name_en`=? AND (`allergen_tags`='' OR `allergen_tags` NOT LIKE '%nuts%')")->execute([$name]);
+            }
+
+            // Eggs
+            $egg_foods = [
+                'Whole Eggs','Egg Whites','Hard Boiled Eggs','Deviled Eggs',
+                'Vegetable Omelette','Frittata','Protein Pancakes','Mayonnaise',
+                'Spanakopita (spinach pie)','Moussaka','Pastitsio',
+                'Kolokithokeftedes (zucchini fritters)',
+            ];
+            foreach ($egg_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `allergen_tags`=CONCAT(CASE WHEN `allergen_tags`='' THEN '' ELSE CONCAT(`allergen_tags`,',') END,'eggs') WHERE `name_en`=? AND (`allergen_tags`='' OR `allergen_tags` NOT LIKE '%eggs%')")->execute([$name]);
+            }
+
+            // Shellfish
+            $shellfish_foods = [
+                'Shrimp (cooked)','Octopus (cooked)','Squid (cooked)','Mussels (cooked)',
+                'Clams (cooked)','Paella (seafood)','Poke Bowl',
+            ];
+            foreach ($shellfish_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `allergen_tags`=CONCAT(CASE WHEN `allergen_tags`='' THEN '' ELSE CONCAT(`allergen_tags`,',') END,'shellfish') WHERE `name_en`=? AND (`allergen_tags`='' OR `allergen_tags` NOT LIKE '%shellfish%')")->execute([$name]);
+            }
+
+            // Soy
+            $soy_foods = [
+                'Tofu (firm)','Edamame','Miso Paste','Soy Milk (unsweetened)',
+                'Soy Sauce (low sodium)','Stir Fry Vegetables with Tofu',
+            ];
+            foreach ($soy_foods as $name) {
+                $db->prepare("UPDATE `foods` SET `allergen_tags`=CONCAT(CASE WHEN `allergen_tags`='' THEN '' ELSE CONCAT(`allergen_tags`,',') END,'soy') WHERE `name_en`=? AND (`allergen_tags`='' OR `allergen_tags` NOT LIKE '%soy%')")->execute([$name]);
             }
 
             $db->commit();

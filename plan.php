@@ -11,6 +11,12 @@ $db     = getDB();
 $user   = getCurrentUser();
 $userId = (int) $_SESSION['user_id'];
 
+// ======== Interview gate ========
+if (empty($user['interview_done'])) {
+    header('Location: ' . BASE_URL . '/preferences.php?next=plan');
+    exit;
+}
+
 $latestProgress = getLatestProgress($userId);
 
 if (!$latestProgress) {
@@ -40,9 +46,26 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         $dislikeStmt->execute([$userId]);
         $dislikes = array_column($dislikeStmt->fetchAll(), 'ingredient_name');
 
+        // Load food preference profile
+        $activeAllergies = [];
+        foreach (['gluten','dairy','nuts','eggs','shellfish','soy'] as $a) {
+            if (!empty($user['allergy_' . $a])) {
+                $activeAllergies[] = $a;
+            }
+        }
+        $exclStmt = $db->prepare('SELECT food_id FROM user_food_exclusions WHERE user_id = ?');
+        $exclStmt->execute([$userId]);
+        $excludedIds = array_column($exclStmt->fetchAll(), 'food_id');
+
+        $profile = [
+            'adventure'    => (int) ($user['food_adventure'] ?? 2),
+            'allergies'    => $activeAllergies,
+            'excluded_ids' => $excludedIds,
+        ];
+
         // Smart food-based meal builder
         require_once __DIR__ . '/engine/meal_builder.php';
-        $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes);
+        $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
 
         $dayNames    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
         $planData    = [];
@@ -119,7 +142,7 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 &bull; <?= __('plan_deficit_lbl') ?> <strong><?= $stats['daily_deficit'] ?> kcal/day</strong>
             </p>
         </div>
-        <div style="display:flex; gap:.75rem;">
+        <div style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">
             <a href="<?= htmlspecialchars($generateUrl) ?>" class="btn btn-primary">
                 <i data-lucide="wand-2" style="width:15px;height:15px;"></i>
                 <?= $plan ? __('plan_regen') : __('plan_gen') ?>
@@ -130,6 +153,9 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 <?= __('plan_shopping') ?>
             </a>
             <?php endif; ?>
+            <a href="<?= BASE_URL ?>/settings.php" style="font-size:.8rem;color:#64748b;text-decoration:none;font-weight:500;">
+                <i data-lucide="settings-2" style="width:13px;height:13px;vertical-align:-1px;margin-right:3px;"></i><?= __('pref_edit_link') ?>
+            </a>
         </div>
     </div>
 

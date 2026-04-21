@@ -35,6 +35,8 @@ $food = [
     'min_serving_g'    => 80,
     'max_serving_g'    => 250,
     'prep_minutes'     => 5,
+    'cuisine_tag'      => 'universal',
+    'allergen_tags'    => '',
 ];
 
 if (!$isNew) {
@@ -85,6 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $food['max_serving_g'] = (int)($_POST['max_serving_g'] ?? 300);
         $food['prep_minutes']  = (int)($_POST['prep_minutes']  ?? 5);
 
+        $valid_cuisine_tags = ['universal','greek','mediterranean','international'];
+        $food['cuisine_tag'] = in_array($_POST['cuisine_tag'] ?? '', $valid_cuisine_tags, true)
+            ? $_POST['cuisine_tag'] : 'universal';
+
+        // allergen_tags: build CSV from checkboxes
+        $valid_allergens = ['gluten','dairy','nuts','eggs','shellfish','soy'];
+        $raw_allergens   = $_POST['allergen_tags'] ?? [];
+        $clean_allergens = array_intersect($raw_allergens, $valid_allergens);
+        $food['allergen_tags'] = implode(',', $clean_allergens);
+
         // ---- Validate ----
         $allowed_types = ['protein','carb','fat','vegetable','fruit','dairy','mixed'];
         if ($food['name_en'] === '')
@@ -116,37 +128,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($isNew) {
                     $st = $db->prepare('
                         INSERT INTO `foods`
-                          (name_en, name_el, food_type, meal_slots,
+                          (name_en, name_el, food_type, cuisine_tag, meal_slots,
                            cal_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g,
                            is_vegan, is_vegetarian, is_gluten_free, is_keto_ok, is_paleo_ok,
-                           available_months, min_serving_g, max_serving_g, prep_minutes)
-                        VALUES (?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?)
+                           allergen_tags, available_months, min_serving_g, max_serving_g, prep_minutes)
+                        VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?,?,?, ?,?,?,?,?)
                     ');
                     $st->execute([
-                        $food['name_en'], $food['name_el'], $food['food_type'], $food['meal_slots'],
+                        $food['name_en'], $food['name_el'], $food['food_type'],
+                        $food['cuisine_tag'], $food['meal_slots'],
                         (float)$food['cal_per_100g'], (float)$food['protein_per_100g'],
                         (float)$food['carbs_per_100g'], (float)$food['fat_per_100g'],
                         $food['is_vegan'], $food['is_vegetarian'], $food['is_gluten_free'],
                         $food['is_keto_ok'], $food['is_paleo_ok'],
-                        $food['available_months'],
+                        $food['allergen_tags'], $food['available_months'],
                         $food['min_serving_g'], $food['max_serving_g'], $food['prep_minutes'],
                     ]);
                 } else {
                     $st = $db->prepare('
                         UPDATE `foods` SET
-                          name_en=?, name_el=?, food_type=?, meal_slots=?,
+                          name_en=?, name_el=?, food_type=?, cuisine_tag=?, meal_slots=?,
                           cal_per_100g=?, protein_per_100g=?, carbs_per_100g=?, fat_per_100g=?,
                           is_vegan=?, is_vegetarian=?, is_gluten_free=?, is_keto_ok=?, is_paleo_ok=?,
-                          available_months=?, min_serving_g=?, max_serving_g=?, prep_minutes=?
+                          allergen_tags=?, available_months=?, min_serving_g=?, max_serving_g=?, prep_minutes=?
                         WHERE id=?
                     ');
                     $st->execute([
-                        $food['name_en'], $food['name_el'], $food['food_type'], $food['meal_slots'],
+                        $food['name_en'], $food['name_el'], $food['food_type'],
+                        $food['cuisine_tag'], $food['meal_slots'],
                         (float)$food['cal_per_100g'], (float)$food['protein_per_100g'],
                         (float)$food['carbs_per_100g'], (float)$food['fat_per_100g'],
                         $food['is_vegan'], $food['is_vegetarian'], $food['is_gluten_free'],
                         $food['is_keto_ok'], $food['is_paleo_ok'],
-                        $food['available_months'],
+                        $food['allergen_tags'], $food['available_months'],
                         $food['min_serving_g'], $food['max_serving_g'], $food['prep_minutes'],
                         $id,
                     ]);
@@ -267,6 +281,19 @@ require_once __DIR__ . '/includes/header.php';
                 </select>
             </div>
 
+            <!-- ── Cuisine Tag ── -->
+            <div class="food-form-group">
+                <label for="cuisine_tag">Cuisine Tag</label>
+                <select id="cuisine_tag" name="cuisine_tag">
+                    <?php foreach (['universal'=>'🌐 Universal','greek'=>'🇬🇷 Greek','mediterranean'=>'🌊 Mediterranean','international'=>'🌍 International'] as $val => $lbl): ?>
+                    <option value="<?= $val ?>" <?= ($food['cuisine_tag'] ?? 'universal') === $val ? 'selected' : '' ?>>
+                        <?= $lbl ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="hint">Controls which adventure-level users see this food</span>
+            </div>
+
             <!-- ── Prep ── -->
             <div class="food-form-group">
                 <label for="prep_minutes">Prep Time (minutes)</label>
@@ -366,6 +393,27 @@ require_once __DIR__ . '/includes/header.php';
                     </label>
                     <?php endforeach; ?>
                 </div>
+            </div>
+
+            <hr class="section-sep">
+
+            <!-- ── Allergen Tags ── -->
+            <div class="food-form-group" style="grid-column:1/-1;">
+                <label>Allergen Tags (check all that apply)</label>
+                <div class="checkbox-group">
+                    <?php
+                    $allergenDefs = ['gluten'=>'🌾 Gluten','dairy'=>'🥛 Dairy','nuts'=>'🥜 Nuts','eggs'=>'🥚 Eggs','shellfish'=>'🦐 Shellfish','soy'=>'🌱 Soy'];
+                    $savedAllergens = array_filter(explode(',', $food['allergen_tags'] ?? ''));
+                    foreach ($allergenDefs as $val => $lbl): ?>
+                    <label>
+                        <input type="checkbox" name="allergen_tags[]"
+                               value="<?= $val ?>"
+                               <?= in_array($val, $savedAllergens, true) ? 'checked' : '' ?>>
+                        <?= $lbl ?>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+                <span class="hint">Used to filter out foods for users with allergies.</span>
             </div>
 
             <hr class="section-sep">
