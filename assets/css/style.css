@@ -514,9 +514,10 @@ select.form-control { cursor: pointer; }
 .meal-dot.dinner    { background: #3498DB; }
 .meal-dot.snack     { background: #9B59B6; }
 
-.meal-info { flex: 1; min-width: 0; }
+.meal-info { flex: 1; min-width: 0; overflow: hidden; }
 .meal-type  { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--slate-mid); }
-.meal-name  { font-size: 0.85rem; font-weight: 600; color: var(--slate); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meal-name  { font-size: 0.85rem; font-weight: 600; color: var(--slate); white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+.meal-macros-row { display: flex; gap: 0.35rem; flex-wrap: wrap; font-size: 0.68rem; color: var(--slate-light); margin-top: 0.2rem; }
 .meal-kcal  { font-size: 0.75rem; font-weight: 700; color: var(--slate-mid); flex-shrink: 0; }
 
 /* ---------- Progress Chart ---------- */
@@ -880,4 +881,95 @@ footer {
 @media (max-width: 480px) {
     .disclaimer-modal { padding: 1.75rem 1.25rem; }
     .disclaimer-modal h2 { font-size: 1.1rem; }
+}
+
+/* ---------- Print Styles ---------- */
+.no-print { }
+.print-only { display: none; }
+
+@media print {
+    @page { size: A4 landscape; margin: 1cm; }
+
+    .navbar, footer, .no-print, .alert { display: none !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
+    .plan-grid { display: none !important; }
+    .print-only { display: block !important; }
+
+    body { background: white; font-size: 9pt; color: #1a2332; min-height: 0 !important; }
+
+    .print-header {
+        font-size: 9pt;
+        margin-bottom: 0.5cm;
+        color: #555;
+        border-bottom: 1.5pt solid #2ecc71;
+        padding-bottom: 0.2cm;
+    }
+
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .print-table th,
+    .print-table td {
+        border: 0.5pt solid #bbb;
+        padding: 4pt 5pt;
+        vertical-align: top;
+    }
+
+    .print-table thead th {
+        background: #e8f8ee;
+        font-size: 8pt;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.3pt;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .pt-day-col   { width: 10%; }
+    .pt-meal-col  { width: 19%; }
+    .pt-total-col { width: 13%; }
+
+    .pt-day-name {
+        font-weight: 700;
+        font-size: 9pt;
+        color: #1a6e3c;
+        vertical-align: middle;
+        text-align: center;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .pt-meal-cell { background: #fff; }
+
+    .print-table tbody tr:nth-child(even) .pt-meal-cell,
+    .print-table tbody tr:nth-child(even) td {
+        background: #fafafa;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .pt-food-name {
+        font-size: 8.5pt;
+        font-weight: 600;
+        margin-bottom: 2pt;
+        line-height: 1.3;
+    }
+
+    .pt-macros {
+        font-size: 7pt;
+        color: #666;
+        line-height: 1.4;
+    }
+
+    .pt-total {
+        font-size: 8.5pt;
+        font-weight: 700;
+        text-align: center;
+        color: #1a6e3c;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 }

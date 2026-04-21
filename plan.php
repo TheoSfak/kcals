@@ -131,7 +131,7 @@ require_once __DIR__ . '/includes/header.php';
 $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
 ?>
 
-<div style="max-width:1100px; margin:2rem auto; padding:0 1.25rem;">
+<div class="no-print" style="max-width:1100px; margin:2rem auto; padding:0 1.25rem;">
 
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.75rem;">
         <div>
@@ -142,7 +142,7 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 &bull; <?= __('plan_deficit_lbl') ?> <strong><?= $stats['daily_deficit'] ?> kcal/day</strong>
             </p>
         </div>
-        <div style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">
+        <div class="no-print" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">
             <a href="<?= htmlspecialchars($generateUrl) ?>" class="btn btn-primary">
                 <i data-lucide="wand-2" style="width:15px;height:15px;"></i>
                 <?= $plan ? __('plan_regen') : __('plan_gen') ?>
@@ -152,6 +152,10 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 <i data-lucide="shopping-cart" style="width:15px;height:15px;"></i>
                 <?= __('plan_shopping') ?>
             </a>
+            <button type="button" onclick="window.print()" class="btn btn-outline">
+                <i data-lucide="printer" style="width:15px;height:15px;"></i>
+                <?= __('plan_print') ?>
+            </button>
             <?php endif; ?>
             <a href="<?= BASE_URL ?>/settings.php" style="font-size:.8rem;color:#64748b;text-decoration:none;font-weight:500;">
                 <i data-lucide="settings-2" style="width:13px;height:13px;vertical-align:-1px;margin-right:3px;"></i><?= __('pref_edit_link') ?>
@@ -185,7 +189,7 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
 
     <!-- Plan metadata -->
     <?php if ($plan): ?>
-    <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+    <div class="no-print" style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
             <div style="font-size:1.4rem; font-weight:800; color:var(--green-dark);"><?= $plan['target_calories'] ?></div>
             <div class="text-small text-muted"><?= __('plan_kcal_target') ?></div>
@@ -211,6 +215,7 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     <?php endif; ?>
 
     <!-- 7-Day Grid -->
+    <div class="no-print">
     <div class="plan-grid">
         <?php foreach ($planData as $dayName => $meals): ?>
         <?php $dayTotal = array_sum(array_column($meals, 'calories')); ?>
@@ -234,11 +239,11 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                         <div class="meal-name" title="<?= htmlspecialchars($mName) ?>">
                             <?= htmlspecialchars($mName) ?>
                         </div>
-                        <div class="text-small" style="color:var(--slate-light);">
-                            P: <?= $meal['protein_g'] ?>g &bull;
-                            C: <?= $meal['carbs_g'] ?>g &bull;
-                            F: <?= $meal['fat_g'] ?>g &bull;
-                            ⏱ <?= $meal['prep_minutes'] ?>min
+                        <div class="meal-macros-row">
+                            <span><?= __('macro_protein') ?>: <strong><?= $meal['protein_g'] ?>g</strong></span>
+                            <span><?= __('macro_carbs') ?>: <strong><?= $meal['carbs_g'] ?>g</strong></span>
+                            <span><?= __('macro_fat') ?>: <strong><?= $meal['fat_g'] ?>g</strong></span>
+                            <span>⏱ <?= __('macro_prep') ?>: <?= $meal['prep_minutes'] ?>min</span>
                         </div>
                     </div>
                     <span class="meal-kcal"><?= $meal['calories'] ?> kcal</span>
@@ -246,21 +251,16 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 <?php endforeach; ?>
             </div>
             <div style="padding:.5rem .75rem; border-top:1px solid var(--border); background:var(--bg); border-radius:0 0 var(--radius) var(--radius);">
-                <div style="display:flex; gap:.4rem; flex-wrap:wrap;">
-                    <span style="font-size:.72rem; color:var(--slate-mid);">
-                        P: <?= array_sum(array_column($meals,'protein_g')) ?>g
-                    </span>
-                    <span style="font-size:.72rem; color:var(--slate-mid);">
-                        &bull; C: <?= array_sum(array_column($meals,'carbs_g')) ?>g
-                    </span>
-                    <span style="font-size:.72rem; color:var(--slate-mid);">
-                        &bull; F: <?= array_sum(array_column($meals,'fat_g')) ?>g
-                    </span>
+                <div style="display:flex; gap:.5rem; flex-wrap:wrap; font-size:.72rem; color:var(--slate-mid);">
+                    <span><?= __('macro_protein') ?>: <strong><?= array_sum(array_column($meals,'protein_g')) ?>g</strong></span>
+                    <span>&bull; <?= __('macro_carbs') ?>: <strong><?= array_sum(array_column($meals,'carbs_g')) ?>g</strong></span>
+                    <span>&bull; <?= __('macro_fat') ?>: <strong><?= array_sum(array_column($meals,'fat_g')) ?>g</strong></span>
                 </div>
             </div>
         </div>
         <?php endforeach; ?>
     </div>
+    </div><!-- /no-print plan-grid wrapper -->
 
     <?php else: ?>
     <div class="card" style="text-align:center; padding:3rem 1.5rem;">
@@ -274,6 +274,76 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     </div>
     <?php endif; ?>
 
+</div><!-- /no-print outer wrapper -->
+
+<?php if ($planData): ?>
+<!-- ======== PRINT TABLE (hidden on screen, visible only on print) ======== -->
+<div class="print-only" style="padding:0;margin:0;">
+    <div class="print-header">
+        <strong>KCALS</strong> &mdash; <?= __('plan_h1') ?>
+        <?php if ($plan): ?>
+        &nbsp;&bull;&nbsp; <?= __('plan_week_start') ?>: <?= $plan['start_date'] ?>
+        &nbsp;&bull;&nbsp; <?= __('plan_week_end') ?>: <?= $plan['end_date'] ?>
+        &nbsp;&bull;&nbsp; <?= __('plan_kcal_target') ?>: <?= $plan['target_calories'] ?> kcal
+        <?php endif; ?>
+    </div>
+    <table class="print-table">
+        <thead>
+            <tr>
+                <th class="pt-day-col">&nbsp;</th>
+                <th class="pt-meal-col"><?= __('meal_slot_breakfast') ?></th>
+                <th class="pt-meal-col"><?= __('meal_slot_lunch') ?></th>
+                <th class="pt-meal-col"><?= __('meal_slot_dinner') ?></th>
+                <th class="pt-meal-col"><?= __('meal_slot_snack') ?></th>
+                <th class="pt-total-col">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($planData as $dayName => $dayMeals):
+            $slotMap = [];
+            foreach ($dayMeals as $m) {
+                $s = $m['slot'] ?? $m['category'] ?? 'lunch';
+                $slotMap[$s] = $m;
+            }
+            $ptDayTotal = array_sum(array_column($dayMeals, 'calories'));
+        ?>
+            <tr>
+                <td class="pt-day-name"><?= __('day_' . strtolower($dayName)) ?></td>
+                <?php foreach (['breakfast','lunch','dinner','snack'] as $slot):
+                    $m = $slotMap[$slot] ?? null;
+                    $mName = '';
+                    if ($m) {
+                        $mName = ($GLOBALS['_kcals_lang'] === 'el')
+                            ? ($m['name_el'] ?? $m['title'] ?? '')
+                            : ($m['name_en'] ?? $m['title'] ?? '');
+                    }
+                ?>
+                <td class="pt-meal-cell">
+                    <?php if ($m): ?>
+                    <div class="pt-food-name"><?= htmlspecialchars($mName) ?></div>
+                    <div class="pt-macros">
+                        <?= $m['calories'] ?> kcal &bull;
+                        P:<?= $m['protein_g'] ?>g &bull;
+                        C:<?= $m['carbs_g'] ?>g &bull;
+                        F:<?= $m['fat_g'] ?>g &bull;
+                        &#9203;<?= $m['prep_minutes'] ?>'
+                    </div>
+                    <?php endif; ?>
+                </td>
+                <?php endforeach; ?>
+                <td class="pt-total">
+                    <?= $ptDayTotal ?> kcal<br>
+                    <span class="pt-macros">
+                        P:<?= array_sum(array_column($dayMeals,'protein_g')) ?>g
+                        C:<?= array_sum(array_column($dayMeals,'carbs_g')) ?>g
+                        F:<?= array_sum(array_column($dayMeals,'fat_g')) ?>g
+                    </span>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
 </div>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
