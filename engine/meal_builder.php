@@ -15,6 +15,7 @@ class MealBuilder
     private int    $adventure; // 1=greek only, 2=mediterranean, 3=worldwide
     private array  $allergies; // active allergen keys e.g. ['dairy','nuts']
     private array  $excluded;  // food IDs the user has explicitly excluded
+    private bool   $sleepBoost; // true when latest sleep_level ≤ 4 (shifts macros toward protein)
 
     /**
      * @param array $profile  Optional preference profile:
@@ -22,13 +23,14 @@ class MealBuilder
      */
     public function __construct(PDO $db, string $diet, int $month, array $dislikes = [], array $profile = [])
     {
-        $this->db       = $db;
-        $this->diet     = strtolower(trim($diet));
-        $this->month    = $month;
-        $this->dislikes = array_map('mb_strtolower', $dislikes);
-        $this->adventure = (int) ($profile['adventure']    ?? 2);
-        $this->allergies = (array) ($profile['allergies']   ?? []);
-        $this->excluded  = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
+        $this->db        = $db;
+        $this->diet      = strtolower(trim($diet));
+        $this->month     = $month;
+        $this->dislikes  = array_map('mb_strtolower', $dislikes);
+        $this->adventure  = (int) ($profile['adventure']    ?? 2);
+        $this->allergies  = (array) ($profile['allergies']   ?? []);
+        $this->excluded   = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
+        $this->sleepBoost = (bool) ($profile['sleep_boost'] ?? false);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -127,18 +129,23 @@ class MealBuilder
         $used = 0.0;
         $components = [];
 
+        // Sleep Factor: shift budget toward protein when sleep quality is poor
+        $carbRatio    = $this->sleepBoost ? 0.30 : 0.44;
+        $proteinRatio = $this->sleepBoost ? 0.42 : 0.28;
+        $fruitRatio   = 0.24;
+
         if ($carb) {
-            $kcal = $target * 0.44;
+            $kcal = $target * $carbRatio;
             $components[] = $this->calc($carb, $kcal);
             $used += $kcal;
         }
         if ($protein) {
-            $kcal = $target * 0.28;
+            $kcal = $target * $proteinRatio;
             $components[] = $this->calc($protein, $kcal);
             $used += $kcal;
         }
         if ($fruit) {
-            $kcal = $target * 0.24;
+            $kcal = $target * $fruitRatio;
             $components[] = $this->calc($fruit, $kcal);
             $used += $kcal;
         }
@@ -197,8 +204,11 @@ class MealBuilder
             if ($veg1)     $components[] = $this->calc($veg1,     $remaining * 0.12);
             if ($veg2)     $components[] = $this->calc($veg2,     $remaining * 0.08);
         } else {
-            if ($protein) $components[] = $this->calc($protein, $remaining * 0.47);
-            if ($carb)    $components[] = $this->calc($carb,    $remaining * 0.39);
+            // Sleep Factor: shift budget toward protein when sleep quality is poor
+            $proteinRatio = $this->sleepBoost ? 0.57 : 0.47;
+            $carbRatio    = $this->sleepBoost ? 0.29 : 0.39;
+            if ($protein) $components[] = $this->calc($protein, $remaining * $proteinRatio);
+            if ($carb)    $components[] = $this->calc($carb,    $remaining * $carbRatio);
             if ($veg1)    $components[] = $this->calc($veg1,    $remaining * 0.10);
             if ($veg2)    $components[] = $this->calc($veg2,    $remaining * 0.04);
         }
@@ -209,21 +219,28 @@ class MealBuilder
 
     private function buildSnack(int $target, array $usedWeek): array
     {
-        $roll = rand(0, 2);
         $excl = $usedWeek;
 
-        if ($roll === 0) {
-            $main = $this->pick('fruit', 'snack', $excl);
-            if ($main) $excl[] = (int) $main['id'];
-            $sec  = $this->pick('fat',   'snack', $excl);
-        } elseif ($roll === 1) {
-            $main = $this->pick('dairy', 'snack', $excl);
+        if ($this->sleepBoost) {
+            // Sleep Factor: always choose a high-satiety dairy/protein snack
+            $main = $this->pick('dairy|protein', 'snack', $excl);
             if ($main) $excl[] = (int) $main['id'];
             $sec  = $this->pick('fruit', 'snack', $excl);
         } else {
-            $main = $this->pick('fruit', 'snack', $excl);
-            if ($main) $excl[] = (int) $main['id'];
-            $sec  = $this->pick('dairy', 'snack', $excl);
+            $roll = rand(0, 2);
+            if ($roll === 0) {
+                $main = $this->pick('fruit', 'snack', $excl);
+                if ($main) $excl[] = (int) $main['id'];
+                $sec  = $this->pick('fat',   'snack', $excl);
+            } elseif ($roll === 1) {
+                $main = $this->pick('dairy', 'snack', $excl);
+                if ($main) $excl[] = (int) $main['id'];
+                $sec  = $this->pick('fruit', 'snack', $excl);
+            } else {
+                $main = $this->pick('fruit', 'snack', $excl);
+                if ($main) $excl[] = (int) $main['id'];
+                $sec  = $this->pick('dairy', 'snack', $excl);
+            }
         }
 
         if (!$main && !$sec) return $this->fallback('snack', $target);

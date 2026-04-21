@@ -5,12 +5,6 @@ Delete the entry from this file after the feature is fully implemented & committ
 
 ---
 
-## v0.9.1 — Sleep Factor
-Add a "sleep quality" slider (1–10) to the daily check-in.
-- If sleep ≤ 4: reduce deficit by 50% for that day's plan and prioritise high-satiety foods (protein, fibre).
-- Store `sleep_level` column in `user_progress`.
-- Show sleep score in the progress chart alongside stress/motivation.
-
 ## v0.9.2 — Event Countdown
 User can set a goal event with a target date (e.g. "Wedding – 15/8/2026") from their profile/settings.
 - Calculate whether the goal weight is reachable by that date (max 0.7 kg/week safe limit).

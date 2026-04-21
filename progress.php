@@ -73,9 +73,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
         <?php if (count($chartData) > 1): ?>
-        <div style="height:280px;">
-            <canvas id="weightChart"></canvas>
-        </div>
+        <div style="height:300px;">
             <canvas id="weightChart"></canvas>
         </div>
         <script>
@@ -84,24 +82,44 @@ require_once __DIR__ . '/includes/header.php';
                 type: 'line',
                 data: {
                     labels: <?= json_encode(array_column($chartData, 'entry_date')) ?>,
-                    datasets: [{
-                        label: 'Weight (kg)',
-                        data: <?= json_encode(array_map(fn($r)=>(float)$r['weight_kg'], $chartData)) ?>,
-                        borderColor: '#2ECC71',
-                        backgroundColor: 'rgba(46,204,113,0.08)',
-                        borderWidth: 2.5,
-                        pointBackgroundColor: '#27AE60',
-                        pointRadius: 4,
-                        tension: 0.35,
-                        fill: true,
-                    }]
+                    datasets: [
+                        {
+                            label: 'Weight (kg)',
+                            data: <?= json_encode(array_map(fn($r)=>(float)$r['weight_kg'], $chartData)) ?>,
+                            borderColor: '#2ECC71',
+                            backgroundColor: 'rgba(46,204,113,0.08)',
+                            borderWidth: 2.5,
+                            pointBackgroundColor: '#27AE60',
+                            pointRadius: 4,
+                            tension: 0.35,
+                            fill: true,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: '<?= __('th_sleep') ?>',
+                            data: <?= json_encode(array_map(fn($r)=>(int)($r['sleep_level'] ?? 5), $chartData)) ?>,
+                            borderColor: '#9B59B6',
+                            backgroundColor: 'rgba(155,89,182,0.07)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#8E44AD',
+                            pointRadius: 3,
+                            tension: 0.35,
+                            fill: false,
+                            borderDash: [4, 3],
+                            yAxisID: 'y1',
+                        }
+                    ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } }
+                    },
                     scales: {
-                        y: { grid: { color: '#eee' } },
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }
+                        y:  { position: 'left',  grid: { color: '#eee' }, ticks: { font: { size: 11 } } },
+                        y1: { position: 'right', min: 1, max: 10, grid: { drawOnChartArea: false },
+                              ticks: { font: { size: 11 }, stepSize: 1 } },
+                        x:  { grid: { display: false }, ticks: { maxTicksLimit: 10 } }
                     }
                 }
             });
@@ -129,6 +147,7 @@ require_once __DIR__ . '/includes/header.php';
                         <th style="padding:.6rem .75rem; text-align:right; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_weight') ?></th>
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_stress') ?></th>
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_motivation') ?></th>
+                        <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase; color:#6c3483;"><?= __('th_sleep') ?></th>
                         <th style="padding:.6rem .75rem; text-align:center; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_zone') ?></th>
                         <th style="padding:.6rem .75rem; text-align:left; color:var(--slate-mid); font-weight:600; font-size:.75rem; text-transform:uppercase;"><?= __('th_notes') ?></th>
                     </tr>
@@ -142,6 +161,7 @@ require_once __DIR__ . '/includes/header.php';
                         <td style="padding:.65rem .75rem; text-align:right; font-weight:700; color:var(--green-dark);"><?= number_format((float)$entry['weight_kg'], 1) ?> kg</td>
                         <td style="padding:.65rem .75rem; text-align:center;"><?= $entry['stress_level'] ?>/10</td>
                         <td style="padding:.65rem .75rem; text-align:center;"><?= $entry['motivation_level'] ?>/10</td>
+                        <td style="padding:.65rem .75rem; text-align:center; color:#6c3483; font-weight:600;"><?= isset($entry['sleep_level']) ? $entry['sleep_level'] . '/10' : '—' ?></td>
                         <td style="padding:.65rem .75rem; text-align:center;"><span class="zone-badge <?= $zone ?>"><?= strtoupper($zone) ?></span></td>
                         <td style="padding:.65rem .75rem; color:var(--slate-mid); font-size:.8rem;"><?= htmlspecialchars($entry['notes'] ?? '—') ?></td>
                     </tr>

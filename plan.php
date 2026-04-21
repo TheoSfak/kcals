@@ -27,6 +27,9 @@ if (!$latestProgress) {
 $stats = calculateUserStats($user, $latestProgress);
 $isPlateau = detectPlateau($userId, $db);
 
+$latestSleep = (int) ($latestProgress['sleep_level'] ?? 5);
+$sleepBoost  = $latestSleep <= 4;
+
 // ---- Generate / Regenerate Plan ----
 $generated = false;
 $genError  = '';
@@ -38,6 +41,11 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         $currentMonth   = (int) date('n');
         // Plateau Breaker: if stagnation detected, reset to TDEE for metabolic shock
         $targetCalories = $isPlateau ? $stats['tdee'] : $stats['target_kcal'];
+
+        // Sleep Factor: if latest sleep ≤ 4, halve the deficit to support recovery
+        if ($sleepBoost && !$isPlateau) {
+            $targetCalories = (int) round(($stats['tdee'] + $stats['target_kcal']) / 2);
+        }
         $zone           = $stats['zone'];
         $dietType       = $user['diet_type'];
 
@@ -61,6 +69,7 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
             'adventure'    => (int) ($user['food_adventure'] ?? 2),
             'allergies'    => $activeAllergies,
             'excluded_ids' => $excludedIds,
+            'sleep_boost'  => $sleepBoost,
         ];
 
         // Smart food-based meal builder
@@ -185,6 +194,13 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
         <?= __('plan_buffer_desc') ?>
     </div>
 
+    <?php if ($sleepBoost): ?>
+    <div class="alert" style="background:#f3e5ff; border:1px solid #c39bd3; color:#6c3483; margin-bottom:1rem;">
+        <strong><?= __('plan_sleep_notice') ?></strong>
+        <?= sprintf(__('plan_sleep_desc'), $latestSleep) ?>
+    </div>
+    <?php endif; ?>
+
     <?php if ($planData): ?>
 
     <!-- Plan metadata -->
@@ -245,6 +261,11 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                             <span><?= __('macro_fat') ?>: <strong><?= $meal['fat_g'] ?>g</strong></span>
                             <span>⏱ <?= __('macro_prep') ?>: <?= $meal['prep_minutes'] ?>min</span>
                         </div>
+                        <?php if (!empty($meal['components'])): ?>
+                        <div class="meal-ingredients">
+                            <?php foreach ($meal['components'] as $ci => $c): ?><?php if ($c['food_id'] > 0): ?><?php if ($ci > 0): ?><span class="ing-sep">&bull;</span><?php endif; ?><span class="ing-item"><?= htmlspecialchars(($GLOBALS['_kcals_lang']==='el') ? $c['name_el'] : $c['name_en']) ?> <strong><?= $c['grams'] ?>g</strong></span><?php endif; ?><?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <span class="meal-kcal"><?= $meal['calories'] ?> kcal</span>
                 </div>
@@ -321,6 +342,18 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
                 <td class="pt-meal-cell">
                     <?php if ($m): ?>
                     <div class="pt-food-name"><?= htmlspecialchars($mName) ?></div>
+                    <?php if (!empty($m['components'])): ?>
+                    <div class="pt-ingredients"><?php
+                        $parts = [];
+                        foreach ($m['components'] as $c) {
+                            if ($c['food_id'] > 0) {
+                                $cn = ($GLOBALS['_kcals_lang']==='el') ? $c['name_el'] : $c['name_en'];
+                                $parts[] = htmlspecialchars($cn) . ' <strong>' . $c['grams'] . 'g</strong>';
+                            }
+                        }
+                        echo implode(' &bull; ', $parts);
+                    ?></div>
+                    <?php endif; ?>
                     <div class="pt-macros">
                         <?= $m['calories'] ?> kcal &bull;
                         P:<?= $m['protein_g'] ?>g &bull;

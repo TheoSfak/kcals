@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stressLevel   = (int)    ($_POST['stress_level']     ?? 5);
         $motivationLv  = (int)    ($_POST['motivation_level'] ?? 5);
         $energyLevel   = (int)    ($_POST['energy_level']     ?? 5);
+        $sleepLevel    = (int)    ($_POST['sleep_level']      ?? 5);
         $notes         = trim(    $_POST['notes']             ?? '');
 
         if ($weightKg < 30 || $weightKg > 300) $checkinErrors[] = __('err_weight_checkin');
@@ -50,16 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         if (empty($checkinErrors)) {
             $upsert = $db->prepare('
-                INSERT INTO user_progress (user_id, weight_kg, stress_level, motivation_level, energy_level, notes, entry_date)
-                VALUES (?, ?, ?, ?, ?, ?, CURDATE())
+                INSERT INTO user_progress (user_id, weight_kg, stress_level, motivation_level, energy_level, sleep_level, notes, entry_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())
                 ON DUPLICATE KEY UPDATE
                     weight_kg        = VALUES(weight_kg),
                     stress_level     = VALUES(stress_level),
                     motivation_level = VALUES(motivation_level),
                     energy_level     = VALUES(energy_level),
+                    sleep_level      = VALUES(sleep_level),
                     notes            = VALUES(notes)
             ');
-            $upsert->execute([$userId, $weightKg, $stressLevel, $motivationLv, $energyLevel, $notes]);
+            $upsert->execute([$userId, $weightKg, $stressLevel, $motivationLv, $energyLevel, $sleepLevel, $notes]);
             $checkinSuccess = true;
         }
     }
@@ -129,6 +131,14 @@ require_once __DIR__ . '/includes/header.php';
     <?php if ($isPlateau): ?>
     <div class="alert" style="background:#fff3cd; border:1px solid #ffc107; color:#856404; margin-bottom:1.5rem;">
         <strong><?= __('dash_plateau_title') ?></strong> <?= __('dash_plateau_desc') ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($stats && $todayCheckin && ((int)($todayCheckin['sleep_level'] ?? 5)) <= 4): ?>
+    <?php $sleepAdjusted = (int) round(($stats['tdee'] + $stats['target_kcal']) / 2); ?>
+    <div class="alert" style="background:#f3e5ff; border:1px solid #c39bd3; color:#6c3483; margin-bottom:1.5rem;">
+        <strong>😴 <?= __('dash_sleep_notice_title') ?></strong><br>
+        <?= sprintf(__('dash_sleep_notice'), (int)$todayCheckin['sleep_level'], $sleepAdjusted) ?>
     </div>
     <?php endif; ?>
 
@@ -311,6 +321,14 @@ require_once __DIR__ . '/includes/header.php';
                     <input type="number" id="weight_kg" name="weight_kg" class="form-control"
                            value="<?= htmlspecialchars($formData['weight_kg'] ?? '') ?>"
                            step="0.1" min="30" max="300" placeholder="<?= htmlspecialchars(__('dash_weight_ph')) ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label><?= __('dash_sleep') ?> <span id="sleepVal" class="range-output"><?= (int)($formData['sleep_level'] ?? 5) ?></span></label>
+                    <input type="range" name="sleep_level" id="sleepRange" class="form-range"
+                           min="1" max="10" value="<?= (int)($formData['sleep_level'] ?? 5) ?>"
+                           oninput="document.getElementById('sleepVal').textContent=this.value">
+                    <div style="display:flex;justify-content:space-between;" class="form-hint"><span><?= __('range_low') ?></span><span><?= __('range_high') ?></span></div>
                 </div>
 
                 <div class="form-group">
