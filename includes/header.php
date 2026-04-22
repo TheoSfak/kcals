@@ -70,19 +70,19 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
         <ul class="navbar-nav">
             <?php if ($isLoggedIn): ?>
                 <li><a href="<?= BASE_URL ?>/dashboard.php"  class="<?= $activeNav==='dashboard' ? 'active':'' ?>">
-                    <i data-lucide="layout-dashboard" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_dashboard') ?></a></li>
+                    <i data-lucide="layout-dashboard" style="width:15px;height:15px;"></i><?= __('nav_dashboard') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/plan.php"        class="<?= $activeNav==='plan' ? 'active':'' ?>">
-                    <i data-lucide="calendar" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_plan') ?></a></li>
+                    <i data-lucide="calendar" style="width:15px;height:15px;"></i><?= __('nav_plan') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/progress.php"    class="<?= $activeNav==='progress' ? 'active':'' ?>">
-                    <i data-lucide="trending-up" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_progress') ?></a></li>
+                    <i data-lucide="trending-up" style="width:15px;height:15px;"></i><?= __('nav_progress') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/tips.php"        class="<?= $activeNav==='tips' ? 'active':'' ?>">
-                    <i data-lucide="lightbulb" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_tips') ?></a></li>
+                    <i data-lucide="lightbulb" style="width:15px;height:15px;"></i><?= __('nav_tips') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/settings.php"    class="<?= $activeNav==='preferences' ? 'active':'' ?>">
-                    <i data-lucide="sliders-horizontal" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_preferences') ?></a></li>
+                    <i data-lucide="sliders-horizontal" style="width:15px;height:15px;"></i><?= __('nav_preferences') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/how_it_works.php" class="<?= $activeNav==='how_it_works' ? 'active':'' ?>">
-                    <i data-lucide="book-open" style="width:15px;height:15px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_how_it_works') ?></a></li>
+                    <i data-lucide="book-open" style="width:15px;height:15px;"></i><?= __('nav_how_it_works') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/logout.php"      class="btn-nav">
-                    <i data-lucide="log-out" style="width:14px;height:14px;vertical-align:-2px;margin-right:3px;"></i><?= __('nav_logout') ?></a></li>
+                    <i data-lucide="log-out" style="width:14px;height:14px;"></i><?= __('nav_logout') ?></a></li>
             <?php else: ?>
                 <li><a href="<?= BASE_URL ?>/index.php"       class="<?= $activeNav==='home' ? 'active':'' ?>"><?= __('nav_home') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/how_it_works.php" class="<?= $activeNav==='how_it_works' ? 'active':'' ?>"><?= __('nav_how_it_works') ?></a></li>
