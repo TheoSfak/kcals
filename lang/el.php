@@ -322,7 +322,7 @@ return [
     'shopping_items'        => 'προϊόντα',
 
     // ---- Footer ----
-    'footer_text'           => 'Έξυπνη Διατροφή &amp; Ευεξία &bull; Χτισμένο με Pure PHP &amp; MySQL',
+    'footer_text'           => 'Έξυπνη Διατροφή &amp; Ευεξία',
 
     // ---- Disclaimer Modal ----
     'disclaimer_title'      => 'Μόνο για Ενημερωτικούς Σκοπούς',

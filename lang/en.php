@@ -321,7 +321,7 @@ return [
     'shopping_items'        => 'items',
 
     // ---- Footer ----
-    'footer_text'           => 'Smart Nutrition &amp; Wellness &bull; Built with Pure PHP &amp; MySQL',
+    'footer_text'           => 'Smart Nutrition &amp; Wellness',
 
     // ---- Disclaimer Modal ----
     'disclaimer_title'      => 'For Informational Use Only',
