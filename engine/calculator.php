@@ -125,6 +125,49 @@ function calculateMacros(int $targetCalories): array {
 }
 
 // ------------------------------------------------------------------
+// Hormetic Recharge Day (v0.9.5)
+// Once per week (user-configurable day, default Wednesday = 3):
+// add +150 kcal above that day's target to prevent metabolic
+// adaptation by temporarily spiking leptin levels.
+// ------------------------------------------------------------------
+const RECHARGE_EXTRA_KCAL = 150;
+
+/**
+ * Map a 1–7 recharge_day integer to a lowercase day name.
+ * 1 = Monday … 7 = Sunday
+ */
+function rechargeDayName(int $rechargeDay): string
+{
+    $map = [1=>'monday',2=>'tuesday',3=>'wednesday',4=>'thursday',5=>'friday',6=>'saturday',7=>'sunday'];
+    return $map[max(1, min(7, $rechargeDay))];
+}
+
+/**
+ * Returns true when $dayName matches the user's configured recharge day.
+ *
+ * @param string $dayName    Full English day name, e.g. 'Wednesday'
+ * @param int    $rechargeDay 1 (Monday) … 7 (Sunday)
+ */
+function isRechargeDay(string $dayName, int $rechargeDay): bool
+{
+    return strtolower($dayName) === rechargeDayName($rechargeDay);
+}
+
+/**
+ * Apply the Hormetic Recharge surplus to the base daily target.
+ *
+ * @param int    $baseTarget  Base daily kcal (after all other adjustments)
+ * @param string $dayName     Full English day name
+ * @param int    $rechargeDay 1 (Monday) … 7 (Sunday)
+ */
+function applyRechargeDay(int $baseTarget, string $dayName, int $rechargeDay): int
+{
+    return isRechargeDay($dayName, $rechargeDay)
+        ? $baseTarget + RECHARGE_EXTRA_KCAL
+        : $baseTarget;
+}
+
+// ------------------------------------------------------------------
 // Social Buffer: shave 150 kcal Mon–Fri, bank all savings on Saturday
 // Mon–Fri: -150 kcal/day  (5 × 150 = 750 saved)
 // Saturday: +750 kcal     (social occasions without breaking balance)
@@ -187,6 +230,84 @@ function detectPlateau(int $userId, PDO $db): bool
     $delta   = (float) max($weights) - (float) min($weights);
 
     return $delta < 0.2;
+}
+
+// ------------------------------------------------------------------
+// Recovery Mode (v0.9.6)
+// Enters when stress_level ≥ 8 for 2 consecutive check-ins.
+// Exits  when stress_level drops below 6.
+// ------------------------------------------------------------------
+const RECOVERY_STRESS_ENTER = 8;  // threshold to enter
+const RECOVERY_STRESS_EXIT  = 6;  // threshold to auto-exit
+const RECOVERY_DEFICIT      = 0.05; // 5% deficit in recovery mode
+
+/**
+ * Evaluate whether recovery mode should be entered, maintained, or exited.
+ * Persists the updated flag to the users table.
+ *
+ * Returns:
+ *   'entered'   — newly activated this call
+ *   'active'    — already active, still triggered
+ *   'exited'    — was active, now deactivated
+ *   'inactive'  — not active and no trigger
+ *
+ * @param int   $userId
+ * @param array $user    Row from users table (must include recovery_mode)
+ * @param PDO   $db
+ */
+function evaluateRecoveryMode(int $userId, array $user, PDO $db): string
+{
+    $currentlyActive = (bool) ($user['recovery_mode'] ?? false);
+
+    // Fetch the two most recent distinct-day check-ins
+    $stmt = $db->prepare('
+        SELECT stress_level FROM user_progress
+        WHERE user_id = ?
+        ORDER BY entry_date DESC
+        LIMIT 2
+    ');
+    $stmt->execute([$userId]);
+    $rows = $stmt->fetchAll();
+
+    if (count($rows) < 1) {
+        return 'inactive';
+    }
+
+    $latestStress = (int) $rows[0]['stress_level'];
+
+    // Auto-exit: latest stress dropped below exit threshold
+    if ($currentlyActive && $latestStress < RECOVERY_STRESS_EXIT) {
+        $db->prepare('UPDATE `users` SET `recovery_mode` = 0 WHERE `id` = ?')->execute([$userId]);
+        return 'exited';
+    }
+
+    // Auto-exit when only one check-in available and already active but not triggered
+    if ($currentlyActive && count($rows) < 2) {
+        // Keep active, not enough data to exit
+        return 'active';
+    }
+
+    // Enter / stay: both recent check-ins have stress ≥ threshold
+    if (count($rows) >= 2) {
+        $prevStress = (int) $rows[1]['stress_level'];
+        if ($latestStress >= RECOVERY_STRESS_ENTER && $prevStress >= RECOVERY_STRESS_ENTER) {
+            if (!$currentlyActive) {
+                $db->prepare('UPDATE `users` SET `recovery_mode` = 1 WHERE `id` = ?')->execute([$userId]);
+                return 'entered';
+            }
+            return 'active';
+        }
+    }
+
+    return $currentlyActive ? 'active' : 'inactive';
+}
+
+/**
+ * Calculate target calories for Recovery Mode (5% deficit of TDEE).
+ */
+function calculateRecoveryCalories(float $tdee): int
+{
+    return (int) round($tdee * (1 - RECOVERY_DEFICIT));
 }
 
 // ------------------------------------------------------------------

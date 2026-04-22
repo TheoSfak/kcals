@@ -354,4 +354,21 @@ return [
     'settings_exclude_tip'  => 'Click a food to exclude it; click again to include it back.',
     'settings_saved'        => 'Settings saved successfully.',
     'settings_back_plan'    => '← Back to Plan',
+
+    // ---- Hormetic Recharge Day (v0.9.5) ----
+    'plan_recharge_notice'      => 'Hormetic Recharge Day ⚡',
+    'plan_recharge_desc'        => 'Every <strong>%s</strong> your plan gets +%d kcal above TDEE and shifts toward complex carbs. This weekly leptin spike prevents metabolic adaptation and helps maintain long-term fat-loss momentum.',
+    'plan_recharge_badge'       => 'Recharge Day',
+    'plan_recharge_badge_title' => 'Hormetic Recharge Day — +150 kcal, complex-carb focused',
+    'settings_recharge_h'       => 'Hormetic Recharge Day',
+    'settings_recharge_tip'     => 'Choose the day of the week that gets +150 kcal above your target, with a complex-carb-heavy meal plan to prevent metabolic adaptation (default: Wednesday).',
+
+    // ---- Recovery Mode (v0.9.6) ----
+    'dash_recovery_title'       => 'Recovery Mode Active',
+    'dash_recovery_desc'        => 'High stress detected for 2+ consecutive check-ins. Your deficit has been reduced to 5%% of TDEE — suggested target: <strong>%d kcal/day</strong>. Your meal plan will focus on comfort-friendly, easy-to-digest foods. Take care of yourself first.',
+    'dash_recovery_exit'        => 'Recovery Mode will automatically deactivate when your stress level drops below 6.',
+    'dash_recovery_exited_title'=> 'Recovery Mode Deactivated',
+    'dash_recovery_exited_desc' => 'Your stress levels have improved. You are back on your normal deficit plan. Well done!',
+    'plan_recovery_notice'      => 'Recovery Mode Active 🧘',
+    'plan_recovery_desc'        => 'High stress has been detected. This week’s deficit is reduced to 5%% of TDEE (<strong>%d kcal/day</strong>). Meals are shifted toward comfort-friendly options to support your wellbeing.',
 ];

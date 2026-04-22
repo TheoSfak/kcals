@@ -103,6 +103,17 @@ if ($stats) {
     }
 }
 
+// ---- Recovery Mode (v0.9.6) ----
+$recoveryStatus = 'inactive';
+if ($latestProgress) {
+    $recoveryStatus = evaluateRecoveryMode($userId, $user, $db);
+    if (in_array($recoveryStatus, ['entered', 'exited'], true)) {
+        // Re-fetch user so recovery_mode flag is fresh
+        $user = getCurrentUser();
+    }
+}
+$isRecoveryMode = (bool) ($user['recovery_mode'] ?? false);
+
 // ---- Event Countdown check ----
 $eventCountdown = null;
 if (
@@ -186,6 +197,21 @@ require_once __DIR__ . '/includes/header.php';
         <?php else: ?>
             <?= sprintf(__('dash_recal_up'), $recalibration['old_tdee'], $recalibration['new_tdee'], abs($recalibration['delta'])) ?>
         <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($isRecoveryMode): ?>
+    <?php $recoveryTarget = $stats ? calculateRecoveryCalories((float) $stats['tdee']) : 0; ?>
+    <div class="alert" style="background:#fce8f3; border:1px solid #d98fba; color:#6b1c47; margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;">
+            <strong>🧘 <?= __('dash_recovery_title') ?></strong>
+        </div>
+        <?= sprintf(__('dash_recovery_desc'), $recoveryTarget) ?>
+        <div style="margin-top:.5rem;font-size:.8rem;opacity:.85;"><?= __('dash_recovery_exit') ?></div>
+    </div>
+    <?php elseif ($recoveryStatus === 'exited'): ?>
+    <div class="alert alert-success" style="margin-bottom:1.5rem;">
+        <strong>✅ <?= __('dash_recovery_exited_title') ?></strong> <?= __('dash_recovery_exited_desc') ?>
     </div>
     <?php endif; ?>
 

@@ -17,6 +17,8 @@ class MealBuilder
     private array  $excluded;  // food IDs the user has explicitly excluded
     private bool   $sleepBoost; // true when latest sleep_level ≤ 4 (shifts macros toward protein)
     private bool   $strengthDay; // true when last workout was strength training (further protein shift)
+    private bool   $complexCarbBias; // true on Hormetic Recharge Day (v0.9.5): carb ratio raised to 55%
+    private bool   $comfortFoodMode; // true in Recovery Mode (v0.9.6): picks dairy/carb comfort foods for snack
 
     /**
      * @param array $profile  Optional preference profile:
@@ -31,8 +33,10 @@ class MealBuilder
         $this->adventure  = (int) ($profile['adventure']    ?? 2);
         $this->allergies  = (array) ($profile['allergies']   ?? []);
         $this->excluded   = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
-        $this->sleepBoost  = (bool) ($profile['sleep_boost']  ?? false);
-        $this->strengthDay = (bool) ($profile['strength_day'] ?? false);
+        $this->sleepBoost       = (bool) ($profile['sleep_boost']        ?? false);
+        $this->strengthDay     = (bool) ($profile['strength_day']      ?? false);
+        $this->complexCarbBias = (bool) ($profile['complex_carb_bias'] ?? false);
+        $this->comfortFoodMode = (bool) ($profile['comfort_food_mode'] ?? false);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -142,6 +146,13 @@ class MealBuilder
             $proteinRatio = 0.50;
         }
 
+        // Hormetic Recharge Day (v0.9.5): maximise complex carbs to spike leptin
+        if ($this->complexCarbBias) {
+            $carbRatio    = 0.55;
+            $proteinRatio = 0.21;
+            $fruitRatio   = 0.24;
+        }
+
         if ($carb) {
             $kcal = $target * $carbRatio;
             $components[] = $this->calc($carb, $kcal);
@@ -220,6 +231,16 @@ class MealBuilder
                 $proteinRatio = 0.62;
                 $carbRatio    = 0.24;
             }
+            // Hormetic Recharge Day (v0.9.5): maximise complex carbs to spike leptin
+            if ($this->complexCarbBias) {
+                $carbRatio    = 0.55;
+                $proteinRatio = 0.31;
+            }
+            // Recovery Mode (v0.9.6): comfort-food bias — slightly raise carbs, lower protein
+            if ($this->comfortFoodMode) {
+                $carbRatio    = 0.48;
+                $proteinRatio = 0.38;
+            }
             if ($protein) $components[] = $this->calc($protein, $remaining * $proteinRatio);
             if ($carb)    $components[] = $this->calc($carb,    $remaining * $carbRatio);
             if ($veg1)    $components[] = $this->calc($veg1,    $remaining * 0.10);
@@ -234,7 +255,12 @@ class MealBuilder
     {
         $excl = $usedWeek;
 
-        if ($this->sleepBoost || $this->strengthDay) {
+        if ($this->comfortFoodMode) {
+            // Recovery Mode (v0.9.6): comfort-food snack — warm dairy or carb-based
+            $main = $this->pick('dairy|carb', 'snack', $excl);
+            if ($main) $excl[] = (int) $main['id'];
+            $sec  = $this->pick('fruit', 'snack', $excl);
+        } elseif ($this->sleepBoost || $this->strengthDay) {
             // Sleep Factor / Strength Day: always choose a high-satiety dairy/protein snack
             $main = $this->pick('dairy|protein', 'snack', $excl);
             if ($main) $excl[] = (int) $main['id'];

@@ -27,6 +27,13 @@ if (!$latestProgress) {
 $stats = calculateUserStats($user, $latestProgress);
 $isPlateau = detectPlateau($userId, $db);
 
+// Hormetic Recharge Day (v0.9.5)
+$rechargeDay     = max(1, min(7, (int) ($user['recharge_day'] ?? 3))); // 1=Mon…7=Sun, default Wed
+$rechargeDayName = rechargeDayName($rechargeDay);  // e.g. 'wednesday'
+
+// Recovery Mode (v0.9.6)
+$isRecoveryMode = (bool) ($user['recovery_mode'] ?? false);
+
 $latestSleep = (int) ($latestProgress['sleep_level'] ?? 5);
 $sleepBoost  = $latestSleep <= 4;
 
@@ -54,8 +61,13 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         // Plateau Breaker: if stagnation detected, reset to TDEE for metabolic shock
         $targetCalories = $isPlateau ? $stats['tdee'] : $stats['target_kcal'];
 
+        // Recovery Mode (v0.9.6): override to 5% deficit regardless of zone
+        if ($isRecoveryMode) {
+            $targetCalories = calculateRecoveryCalories((float) $stats['tdee']);
+        }
+
         // Sleep Factor: if latest sleep ≤ 4, halve the deficit to support recovery
-        if ($sleepBoost && !$isPlateau) {
+        if ($sleepBoost && !$isPlateau && !$isRecoveryMode) {
             $targetCalories = (int) round(($stats['tdee'] + $stats['target_kcal']) / 2);
         }
 
@@ -89,11 +101,11 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
             'excluded_ids' => $excludedIds,
             'sleep_boost'  => $sleepBoost,
             'strength_day' => $strengthDay,
+            'comfort_food_mode' => $isRecoveryMode,
         ];
 
-        // Smart food-based meal builder
+        // Smart food-based meal builder (instantiated per-day to allow per-day profile tweaks)
         require_once __DIR__ . '/engine/meal_builder.php';
-        $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
 
         $dayNames    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
         $planData    = [];
@@ -104,7 +116,13 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
             $dayFoodIds = []; // Food IDs used in earlier slots today (avoid same protein lunch+dinner)
 
             // Social Buffer: adjust per-day target (−150 Mon–Fri, +750 Sat, unchanged Sun)
-            $dayTarget   = applySocialBuffer($targetCalories, $day);
+            $dayTarget = applySocialBuffer($targetCalories, $day);
+
+            // Hormetic Recharge Day (v0.9.5): add +150 kcal above TDEE
+            $isDayRecharge = isRechargeDay($day, $rechargeDay);
+            if ($isDayRecharge) {
+                $dayTarget = applyRechargeDay($dayTarget, $day, $rechargeDay);
+            }
             $mealTargets = [
                 'breakfast' => (int) round($dayTarget * 0.25),
                 'lunch'     => (int) round($dayTarget * 0.35),
@@ -113,6 +131,13 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
             ];
 
             foreach ($mealTargets as $slot => $kcalTarget) {
+                // Pass complex_carb_bias on the recharge day
+                if ($isDayRecharge) {
+                    $profile['complex_carb_bias'] = true;
+                } else {
+                    $profile['complex_carb_bias'] = false;
+                }
+                $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
                 $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
                 $dayMeals[] = $meal;
                 foreach ($meal['components'] as $c) {
@@ -227,6 +252,19 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     </div>
     <?php endif; ?>
 
+    <div class="alert" style="background:#fff8e1; border:1px solid #ffc107; color:#6d4c00; margin-bottom:1rem;">
+        <strong><?= __('plan_recharge_notice') ?></strong>
+        <?= sprintf(__('plan_recharge_desc'), __(('day_' . $rechargeDayName)), RECHARGE_EXTRA_KCAL) ?>
+    </div>
+
+    <?php if ($isRecoveryMode): ?>
+    <?php $recoveryTarget = calculateRecoveryCalories((float) $stats['tdee']); ?>
+    <div class="alert" style="background:#fce8f3; border:1px solid #d98fba; color:#6b1c47; margin-bottom:1rem;">
+        <strong>🧘 <?= __('plan_recovery_notice') ?></strong>
+        <?= sprintf(__('plan_recovery_desc'), $recoveryTarget) ?>
+    </div>
+    <?php endif; ?>
+
     <?php if ($planData): ?>
 
     <!-- Plan metadata -->
@@ -260,10 +298,18 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
     <div class="no-print">
     <div class="plan-grid">
         <?php foreach ($planData as $dayName => $meals): ?>
-        <?php $dayTotal = array_sum(array_column($meals, 'calories')); ?>
-        <div class="day-card">
+        <?php
+            $dayTotal = array_sum(array_column($meals, 'calories'));
+            $isDayRechargeView = isRechargeDay($dayName, $rechargeDay);
+        ?>
+        <div class="day-card<?= $isDayRechargeView ? ' recharge-day-card' : '' ?>">
             <div class="day-card-header">
                 <span class="day-name"><?= __('day_' . strtolower($dayName)) ?></span>
+                <?php if ($isDayRechargeView): ?>
+                <span class="recharge-badge" title="<?= __('plan_recharge_badge_title') ?>">
+                    ⚡ <?= __('plan_recharge_badge') ?>
+                </span>
+                <?php endif; ?>
                 <span class="day-kcal"><?= $dayTotal ?> kcal</span>
             </div>
             <div class="meal-list">

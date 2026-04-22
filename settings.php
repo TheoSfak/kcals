@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = __('err_invalid_submit');
     } else {
         $adventure   = max(1, min(3, (int) ($_POST['food_adventure'] ?? 2)));
+        $rechargeDay = max(1, min(7, (int) ($_POST['recharge_day']   ?? 3)));
         $allergyKeys = ['gluten','dairy','nuts','eggs','shellfish','soy'];
         $allergyVals = [];
         foreach ($allergyKeys as $a) {
@@ -39,10 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $setAllergy = implode(', ', array_map(fn($k) => "`$k` = ?", array_keys($allergyVals)));
             $stmt = $db->prepare("
                 UPDATE `users`
-                SET `food_adventure` = ?, `interview_done` = 1, $setAllergy
+                SET `food_adventure` = ?, `recharge_day` = ?, `interview_done` = 1, $setAllergy
                 WHERE `id` = ?
             ");
-            $stmt->execute(array_merge([$adventure], array_values($allergyVals), [$userId]));
+            $stmt->execute(array_merge([$adventure, $rechargeDay], array_values($allergyVals), [$userId]));
 
             $db->prepare('DELETE FROM `user_food_exclusions` WHERE `user_id` = ?')->execute([$userId]);
 
@@ -103,7 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ======== LOAD DATA ========
-$currentAdventure = (int) ($user['food_adventure'] ?? 2);
+$currentAdventure  = (int) ($user['food_adventure'] ?? 2);
+$currentRechargeDay = max(1, min(7, (int) ($user['recharge_day'] ?? 3)));
 $currentAllergies = [
     'gluten'    => (int) ($user['allergy_gluten']    ?? 0),
     'dairy'     => (int) ($user['allergy_dairy']     ?? 0),
@@ -364,6 +366,25 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <?php endif; ?>
             </div>
+        </div>
+
+        <!-- ===== Hormetic Recharge Day (v0.9.5) ===== -->
+        <div class="settings-card">
+            <h3>⚡ <?= __('settings_recharge_h') ?></h3>
+            <p style="font-size:.82rem;color:#64748b;margin:0 0 .875rem;"><?= __('settings_recharge_tip') ?></p>
+            <select name="recharge_day" class="form-control" style="max-width:220px;">
+                <?php
+                $dayMap = [
+                    1 => __('day_monday'),    2 => __('day_tuesday'),   3 => __('day_wednesday'),
+                    4 => __('day_thursday'),  5 => __('day_friday'),     6 => __('day_saturday'),
+                    7 => __('day_sunday'),
+                ];
+                foreach ($dayMap as $num => $label): ?>
+                <option value="<?= $num ?>" <?= $currentRechargeDay === $num ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($label) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">

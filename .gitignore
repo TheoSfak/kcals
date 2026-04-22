@@ -16,3 +16,6 @@ desktop.ini
 # Logs & temp
 *.log
 /tmp/
+
+# Productive-site snapshot / deploy artefacts (not part of the repo)
+productive-site/
