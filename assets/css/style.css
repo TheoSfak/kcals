@@ -741,6 +741,11 @@ footer {
     border-top: 1px solid var(--border);
     margin-top: 4rem;
 }
+.footer-version {
+    opacity: .55;
+    font-size: .75rem;
+    letter-spacing: .3px;
+}
 
 /* ---------- Section Padding ---------- */
 .section { padding: 4rem 1.25rem; }
