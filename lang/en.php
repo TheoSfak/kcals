@@ -24,6 +24,20 @@ return [
     'hero_btn_start'        => 'Start Free Today',
     'hero_btn_how'          => 'How It Works',
     'lp_trust_badge'        => 'Science-backed • Zero AI gimmicks • 100% free',
+
+    // ---- Hero variants 2 & 3 (random rotation) ----
+    'hero_badge_2'          => 'Your Personal Nutrition Blueprint',
+    'hero_h1_line1_2'       => 'Your Body. Your Rules.',
+    'hero_h1_line2_2'       => 'Real Food. Real Results.',
+    'hero_sub_2'            => 'A weekly meal plan built around your weight, age, and lifestyle — recalculated every week, automatically.',
+    'lp_trust_badge_2'      => 'Mifflin-St Jeor Powered • No Subscriptions • 100% Free',
+
+    'hero_badge_3'          => 'Evidence-Based. Zero Guesswork.',
+    'hero_h1_line1_3'       => 'Stop Guessing.',
+    'hero_h1_line2_3'       => 'Start Thriving.',
+    'hero_sub_3'            => 'KCALS calculates your exact calorie and macro targets, then builds a tailored meal plan — effortlessly.',
+    'lp_trust_badge_3'      => 'Evidence-based • Personalised • Free Forever',
+
     'lp_nutrition_badge'    => 'Why nutrition matters',
     'lp_nutrition_h'        => 'The right food changes everything.',
     'lp_nutrition_p'        => 'Your energy, mood, sleep, focus and body shape are all driven by what you eat — not by how hard you train. KCALS builds your plan around peer-reviewed science, not Instagram trends.',

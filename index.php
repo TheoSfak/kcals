@@ -5,6 +5,48 @@
 require_once __DIR__ . '/includes/auth.php';
 $pageTitle = __('home_title');
 $activeNav = 'home';
+
+// ---- Randomly pick one of 3 hero variants on each visit ----
+$heroes = [
+    [
+        'badge'   => __('hero_badge'),
+        'line1'   => __('hero_h1_line1'),
+        'line2'   => __('hero_h1_line2'),
+        'sub'     => __('hero_sub'),
+        'trust'   => __('lp_trust_badge'),
+        'img_tall'=> ['url' => 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=480&q=80&fit=crop&auto=format', 'alt' => 'Man training at the gym'],
+        'img_sm1' => ['url' => 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=360&q=80&fit=crop&auto=format', 'alt' => 'Woman running outdoors'],
+        'img_sm2' => ['url' => 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=360&q=80&fit=crop&auto=format', 'alt' => 'Healthy colourful meal'],
+        'float_tl'=> '<span class="mf-label">Zone</span><span class="mf-value green">🟢 Green ✓</span>',
+        'float_br'=> '<span style="font-size:1.5rem;">🔥</span><div><div class="mf-value" style="font-size:1.2rem;">7</div><div class="mf-label">day streak</div></div>',
+    ],
+    [
+        'badge'   => __('hero_badge_2'),
+        'line1'   => __('hero_h1_line1_2'),
+        'line2'   => __('hero_h1_line2_2'),
+        'sub'     => __('hero_sub_2'),
+        'trust'   => __('lp_trust_badge_2'),
+        'img_tall'=> ['url' => 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=480&q=80&fit=crop&auto=format', 'alt' => 'Healthy nutrition bowl'],
+        'img_sm1' => ['url' => 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=360&q=80&fit=crop&auto=format', 'alt' => 'Yoga and wellness'],
+        'img_sm2' => ['url' => 'https://images.unsplash.com/photo-1547592180-85f173990554?w=360&q=80&fit=crop&auto=format', 'alt' => 'Meal planning'],
+        'float_tl'=> '<span class="mf-label">Macros</span><span class="mf-value green">🥗 All set ✓</span>',
+        'float_br'=> '<span style="font-size:1.5rem;">⚡</span><div><div class="mf-value" style="font-size:1.1rem;">High</div><div class="mf-label">energy</div></div>',
+    ],
+    [
+        'badge'   => __('hero_badge_3'),
+        'line1'   => __('hero_h1_line1_3'),
+        'line2'   => __('hero_h1_line2_3'),
+        'sub'     => __('hero_sub_3'),
+        'trust'   => __('lp_trust_badge_3'),
+        'img_tall'=> ['url' => 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=480&q=80&fit=crop&auto=format', 'alt' => 'Woman running outdoors'],
+        'img_sm1' => ['url' => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=360&q=80&fit=crop&auto=format', 'alt' => 'Man at the gym'],
+        'img_sm2' => ['url' => 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=360&q=80&fit=crop&auto=format', 'alt' => 'Healthy colourful meal'],
+        'float_tl'=> '<span class="mf-label">Plan</span><span class="mf-value green">📊 Ready ✓</span>',
+        'float_br'=> '<span style="font-size:1.5rem;">🎯</span><div><div class="mf-value" style="font-size:1.1rem;">On track</div><div class="mf-label">goal</div></div>',
+    ],
+];
+$h = $heroes[array_rand($heroes)];
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -12,15 +54,15 @@ require_once __DIR__ . '/includes/header.php';
 <section class="hero">
     <div class="hero-inner">
         <div class="hero-text">
-            <div class="hero-badge"><?= __('hero_badge') ?></div>
+            <div class="hero-badge"><?= $h['badge'] ?></div>
             <h1 style="font-size:clamp(2rem,5vw,3rem); line-height:1.1; font-weight:900; margin-bottom:1rem;">
-                <?= __('hero_h1_line1') ?><br>
-                <span style="color:var(--green-dark)"><?= __('hero_h1_line2') ?></span>
+                <?= $h['line1'] ?><br>
+                <span style="color:var(--green-dark)"><?= $h['line2'] ?></span>
             </h1>
             <p style="font-size:1.1rem; color:var(--slate-mid); line-height:1.7; margin-bottom:.5rem;">
-                <?= __('hero_sub') ?>
+                <?= $h['sub'] ?>
             </p>
-            <p class="lp-trust-badge"><?= __('lp_trust_badge') ?></p>
+            <p class="lp-trust-badge"><?= $h['trust'] ?></p>
             <div class="hero-cta" style="margin-top:1.5rem;">
                 <a href="<?= BASE_URL ?>/register.php" class="btn btn-primary btn-lg">
                     <i data-lucide="rocket" style="width:18px;height:18px;"></i>
@@ -37,31 +79,23 @@ require_once __DIR__ . '/includes/header.php';
         <div class="hero-mosaic" aria-hidden="true">
             <div class="mosaic-grid">
                 <div class="mosaic-tall">
-                    <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=480&q=80&fit=crop&auto=format"
-                         alt="Man training at the gym" loading="lazy">
+                    <img src="<?= $h['img_tall']['url'] ?>" alt="<?= htmlspecialchars($h['img_tall']['alt']) ?>" loading="lazy">
                 </div>
                 <div class="mosaic-col">
                     <div class="mosaic-sm">
-                        <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=360&q=80&fit=crop&auto=format"
-                             alt="Woman running outdoors" loading="lazy">
+                        <img src="<?= $h['img_sm1']['url'] ?>" alt="<?= htmlspecialchars($h['img_sm1']['alt']) ?>" loading="lazy">
                     </div>
                     <div class="mosaic-sm">
-                        <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=360&q=80&fit=crop&auto=format"
-                             alt="Healthy colourful meal" loading="lazy">
+                        <img src="<?= $h['img_sm2']['url'] ?>" alt="<?= htmlspecialchars($h['img_sm2']['alt']) ?>" loading="lazy">
                     </div>
                 </div>
             </div>
-            <!-- Floating stat card -->
+            <!-- Floating stat cards -->
             <div class="mosaic-float mosaic-float-tl">
-                <span class="mf-label">Zone</span>
-                <span class="mf-value green">🟢 Green ✓</span>
+                <?= $h['float_tl'] ?>
             </div>
             <div class="mosaic-float mosaic-float-br">
-                <span style="font-size:1.5rem;">🔥</span>
-                <div>
-                    <div class="mf-value" style="font-size:1.2rem;">7</div>
-                    <div class="mf-label">day streak</div>
-                </div>
+                <?= $h['float_br'] ?>
             </div>
         </div>
     </div>
