@@ -363,6 +363,23 @@ if (empty($pending)) {
             try {
                 $db->exec($s);
             } catch (PDOException $e) {
+                $code = (int) $e->getCode();           // SQLSTATE
+                $info = $e->errorInfo ?? [];
+                $mysql = (int) ($info[1] ?? 0);        // MySQL native error number
+
+                // Non-fatal: column/key/table already exists (idempotent migrations)
+                // MySQL 1060 = Duplicate column name
+                // MySQL 1061 = Duplicate key name
+                // MySQL 1050 = Table already exists  (SQLSTATE 42S01)
+                // MySQL 1062 = Duplicate entry       (INSERT IGNORE handles, but just in case)
+                $nonFatal = in_array($mysql, [1060, 1061, 1050, 1062], true)
+                         || in_array((string) $code, ['42S01', '42S21'], true);
+
+                if ($nonFatal) {
+                    $log .= "   ⚠️  Statement " . ($idx + 1) . " skipped (already applied): " . $e->getMessage() . "\n";
+                    continue;
+                }
+
                 $log .= "   ❌ Statement " . ($idx + 1) . " failed: " . $e->getMessage() . "\n";
                 $log .= "      SQL: " . mb_substr($s, 0, 120) . "…\n";
                 $ok   = false;

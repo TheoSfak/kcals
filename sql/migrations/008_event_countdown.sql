@@ -5,9 +5,9 @@
 -- ============================================================
 
 ALTER TABLE users
-    ADD COLUMN goal_event_name VARCHAR(120)  NULL DEFAULT NULL,
-    ADD COLUMN goal_event_date DATE          NULL DEFAULT NULL,
-    ADD COLUMN goal_weight_kg  DECIMAL(5,2)  NULL DEFAULT NULL;
+    ADD COLUMN IF NOT EXISTS goal_event_name VARCHAR(120)  NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS goal_event_date DATE          NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS goal_weight_kg  DECIMAL(5,2)  NULL DEFAULT NULL;
 
 -- Register migration
 INSERT IGNORE INTO schema_migrations (filename) VALUES ('008_event_countdown.sql');
