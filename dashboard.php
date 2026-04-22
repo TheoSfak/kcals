@@ -464,7 +464,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label for="workout_type"><?= __('dash_workout') ?></label>
+                    <label for="workout_type"><?= __('dash_workout') ?> <span class="form-hint" style="font-size:0.78rem;color:var(--slate-mid);"><?= __('optional') ?></span></label>
                     <select id="workout_type" name="workout_type" class="form-control"
                             onchange="document.getElementById('workoutDurationRow').style.display=this.value?'block':'none'">
                         <option value=""<?= empty($formData['workout_type']) ? ' selected' : '' ?>><?= __('workout_none') ?></option>
@@ -478,7 +478,7 @@ require_once __DIR__ . '/includes/header.php';
                     <label for="workout_minutes"><?= __('dash_workout_minutes') ?></label>
                     <input type="number" id="workout_minutes" name="workout_minutes" class="form-control"
                            value="<?= (int)($formData['workout_minutes'] ?? 0) ?>"
-                           min="1" max="300" placeholder="30">
+                           min="0" max="300" placeholder="30">
                 </div>
 
                 <div class="form-group">

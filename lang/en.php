@@ -170,6 +170,7 @@ return [
     'dash_stress'           => 'Stress Level:',
     'dash_motivation'       => 'Motivation Level:',
     'dash_energy'           => 'Energy Level:',
+    'optional'              => 'Optional',
     'range_low'             => '1 (very low)',
     'range_high'            => '10 (very high)',
     'dash_notes'            => 'Notes (optional)',
