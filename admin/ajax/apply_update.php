@@ -3,7 +3,8 @@
 // KCALS Admin – AJAX: Apply Update from GitHub
 // POST only. Requires CSRF + admin role.
 // Steps:
-//   1. git pull origin main
+//   1a. Download latest release zip from GitHub and extract (shared hosting)
+//   1b. Fallback: git pull origin main (local dev with git)
 //   2. Ensure schema_migrations table exists (bootstrap)
 //   3. Detect + run any new sql/migrations/*.sql files
 //   4. Re-read VERSION from disk
@@ -161,37 +162,162 @@ function splitSqlStatements(string $sql): array
 }
 
 // =========================================================
-// Step 1 — git pull
+// Step 1 — Pull latest code
+//   Strategy A: Download + extract the GitHub release zip
+//               (works on shared hosting, no git required)
+//   Strategy B: git pull (local dev / VPS with git)
 // =========================================================
 $log .= "📂 Repo: $repoDir\n\n";
-$log .= "⬇️  git pull origin main\n";
 
-$gitCmd = 'git pull origin main 2>&1';
-$gitOk  = runCmd($gitCmd, $repoDir, $log);
+// --- Strategy A: zip download ---
+$zipOk      = false;
+$apiContext = stream_context_create([
+    'http' => [
+        'method'  => 'GET',
+        'header'  => "User-Agent: KCALS-Admin/1.0\r\nAccept: application/vnd.github+json\r\n",
+        'timeout' => 15,
+    ],
+]);
 
-if (!$gitOk) {
-    // Try explicit git path (common Windows installations)
-    foreach ([
-        'C:\\Program Files\\Git\\bin\\git.exe',
-        'C:\\Program Files (x86)\\Git\\bin\\git.exe',
-    ] as $gitPath) {
-        if (file_exists($gitPath)) {
-            $log .= "Retrying with: $gitPath\n";
-            $gitOk = runCmd('"' . $gitPath . '" pull origin main 2>&1', $repoDir, $log);
-            break;
+$releaseBody = @file_get_contents(
+    'https://api.github.com/repos/TheoSfak/kcals/releases/latest',
+    false,
+    $apiContext
+);
+$zipUrl = null;
+if ($releaseBody !== false) {
+    $release = json_decode($releaseBody, true);
+    $zipUrl  = $release['zipball_url'] ?? null;
+}
+
+if ($zipUrl) {
+    $log .= "⬇️  Downloading release zip…\n";
+
+    // Follow redirects (GitHub sends a 302 to S3)
+    $zipContext = stream_context_create([
+        'http' => [
+            'method'           => 'GET',
+            'header'           => "User-Agent: KCALS-Admin/1.0\r\n",
+            'timeout'          => 60,
+            'follow_location'  => 1,
+            'max_redirects'    => 5,
+        ],
+    ]);
+
+    $tmpZip = tempnam(sys_get_temp_dir(), 'kcals_update_') . '.zip';
+    $zipData = @file_get_contents($zipUrl, false, $zipContext);
+
+    if ($zipData !== false && strlen($zipData) > 1000) {
+        file_put_contents($tmpZip, $zipData);
+        $log .= "   Downloaded " . round(strlen($zipData) / 1024, 1) . " KB\n";
+
+        if (class_exists('ZipArchive')) {
+            $zip = new ZipArchive();
+            if ($zip->open($tmpZip) === true) {
+                // The zip contains a single top-level folder like "TheoSfak-kcals-<sha>/"
+                // We need to strip that prefix when extracting
+                $topDir = null;
+                for ($zi = 0; $zi < $zip->numFiles; $zi++) {
+                    $name = $zip->getNameIndex($zi);
+                    if ($topDir === null) {
+                        $parts  = explode('/', $name, 2);
+                        $topDir = $parts[0] . '/';
+                    }
+                    break;
+                }
+
+                $skipPatterns = [
+                    '/^[^\/]+\/config\/db\.php$/',          // never overwrite DB config
+                    '/^[^\/]+\/productive-site\//',          // skip productive-site mirror
+                    '/^[^\/]+\/\.git\//',                    // skip any nested .git
+                ];
+
+                $extracted = 0;
+                for ($zi = 0; $zi < $zip->numFiles; $zi++) {
+                    $name = $zip->getNameIndex($zi);
+
+                    // Skip the root folder entry itself
+                    if ($name === $topDir) continue;
+
+                    // Check skip patterns
+                    $skip = false;
+                    foreach ($skipPatterns as $pat) {
+                        if (preg_match($pat, $name)) { $skip = true; break; }
+                    }
+                    if ($skip) continue;
+
+                    // Strip top-level directory prefix
+                    $rel  = substr($name, strlen($topDir));
+                    if ($rel === '' || $rel === false) continue;
+
+                    $dest = $repoDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+
+                    if (str_ends_with($name, '/')) {
+                        // Directory entry
+                        if (!is_dir($dest)) {
+                            mkdir($dest, 0755, true);
+                        }
+                    } else {
+                        $dir = dirname($dest);
+                        if (!is_dir($dir)) mkdir($dir, 0755, true);
+                        $content = $zip->getFromIndex($zi);
+                        if ($content !== false) {
+                            file_put_contents($dest, $content);
+                            $extracted++;
+                        }
+                    }
+                }
+                $zip->close();
+                @unlink($tmpZip);
+                $log   .= "   ✅ Extracted $extracted file(s).\n\n";
+                $zipOk  = true;
+            } else {
+                $log .= "   ❌ Could not open zip archive.\n";
+                @unlink($tmpZip);
+            }
+        } else {
+            $log .= "   ⚠️  ZipArchive not available — falling back to git.\n";
+            @unlink($tmpZip);
         }
+    } else {
+        $log .= "   ❌ Zip download failed or empty response.\n";
+        @unlink($tmpZip);
     }
 }
 
-if (!$gitOk) {
-    echo json_encode([
-        'ok'  => false,
-        'log' => $log . "\n❌ git pull failed — make sure git is in PATH and the web process has read access to the repo.",
-    ]);
-    exit;
-}
+// --- Strategy B: git pull (fallback for local dev / VPS) ---
+if (!$zipOk) {
+    $log .= "⬇️  git pull origin main\n";
+    $gitOk  = false;
+    $gitCmd = 'git pull origin main 2>&1';
+    $gitOk  = runCmd($gitCmd, $repoDir, $log);
 
-$log .= "\n✅ Code pulled.\n\n";
+    if (!$gitOk) {
+        foreach ([
+            'C:\\Program Files\\Git\\bin\\git.exe',
+            'C:\\Program Files (x86)\\Git\\bin\\git.exe',
+            '/usr/bin/git',
+            '/usr/local/bin/git',
+        ] as $gitPath) {
+            if (file_exists($gitPath)) {
+                $log .= "Retrying with: $gitPath\n";
+                $gitOk = runCmd('"' . $gitPath . '" pull origin main 2>&1', $repoDir, $log);
+                break;
+            }
+        }
+    }
+
+    if (!$gitOk) {
+        echo json_encode([
+            'ok'  => false,
+            'log' => $log . "\n❌ Update failed — zip download failed and git pull failed.\n"
+                          . "Make sure the server can reach github.com (check allow_url_fopen / curl) "
+                          . "or that git is installed.",
+        ]);
+        exit;
+    }
+    $log .= "\n✅ Code pulled via git.\n\n";
+}
 
 // =========================================================
 // Step 2 — Bootstrap schema_migrations table
@@ -263,4 +389,4 @@ $newVersion  = file_exists($versionFile) ? trim(file_get_contents($versionFile))
 $log        .= "\n🏷️  Version: $newVersion\n";
 $log        .= "\n🎉 Update complete!\n";
 
-echo json_encode(['ok' => true, 'log' => $log, 'version' => $newVersion]);
+echo json_encode(['ok' => true, 'log' => $log, 'version' => $newVersion]);
