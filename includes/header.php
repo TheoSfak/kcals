@@ -31,6 +31,40 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <!-- App CSS -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
+    <!-- ===== Appearance Overrides (admin-controlled) ===== -->
+    <?php
+    $appKeys = ['appearance_accent','appearance_accent_dark','appearance_bg',
+                'appearance_font_family','appearance_font_size','appearance_border_radius'];
+    $appSettings = function_exists('getSettings') ? getSettings($appKeys) : [];
+    $accent      = preg_match('/^#[0-9a-fA-F]{3,6}$/', $appSettings['appearance_accent']       ?? '') ? $appSettings['appearance_accent']      : null;
+    $accentDark  = preg_match('/^#[0-9a-fA-F]{3,6}$/', $appSettings['appearance_accent_dark']  ?? '') ? $appSettings['appearance_accent_dark']  : null;
+    $bgCol       = preg_match('/^#[0-9a-fA-F]{3,6}$/', $appSettings['appearance_bg']           ?? '') ? $appSettings['appearance_bg']           : null;
+    $fontFam     = $appSettings['appearance_font_family'] ?? '';
+    $fontSize    = (int) ($appSettings['appearance_font_size']    ?? 16);
+    $radius      = (int) ($appSettings['appearance_border_radius'] ?? 14);
+    $allowedFonts = ['Inter','Roboto','Lato','Poppins','Open Sans','Nunito','Source Sans Pro'];
+    $fontFam     = in_array($fontFam, $allowedFonts, true) ? $fontFam : null;
+    $fontSize    = ($fontSize >= 12 && $fontSize <= 22) ? $fontSize : null;
+    $radius      = ($radius  >= 0  && $radius  <= 30)  ? $radius  : null;
+    $hasOverrides = $accent || $accentDark || $bgCol || $fontFam || $fontSize !== null || $radius !== null;
+    if ($hasOverrides):
+        // Load Google Font if not Inter
+        if ($fontFam && $fontFam !== 'Inter'):
+            $gfSlug = str_replace(' ', '+', $fontFam);
+    ?>
+    <link href="https://fonts.googleapis.com/css2?family=<?= htmlspecialchars($gfSlug) ?>:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <?php endif; ?>
+    <style>
+    :root {
+        <?= $accent     ? "--green:      {$accent};".PHP_EOL        : '' ?>
+        <?= $accentDark ? "--green-dark: {$accentDark};".PHP_EOL    : '' ?>
+        <?= $bgCol      ? "--bg:         {$bgCol};".PHP_EOL         : '' ?>
+        <?= $radius !== null ? "--radius: {$radius}px;".PHP_EOL     : '' ?>
+    }
+    <?= $fontFam   ? "body, button, input, select, textarea { font-family: '{$fontFam}', sans-serif; }" : '' ?>
+    <?= $fontSize !== null ? "html { font-size: {$fontSize}px; }" : '' ?>
+    </style>
+    <?php endif; ?>
 </head>
 <body>
 
