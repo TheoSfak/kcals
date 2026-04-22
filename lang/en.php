@@ -409,6 +409,22 @@ return [
     'hiw_disclaimer'            => '⚠️ KCALS provides calorie estimates for <strong>informational purposes only</strong>. Always consult your doctor or a registered dietitian before making significant changes to your diet.',
     'hiw_sources'               => 'Sources: Mifflin MD et al. (1990) <em>Am J Clin Nutr</em> 51:241–247 · Harris-Benedict (1919) · ACSM Guidelines for Exercise Testing and Prescription.',
 
+    // ---- Zone Card (v0.9.8) ----
+    'share_page_title'          => 'My Weekly Zone Card – KCALS',
+    'share_h1'                  => 'My Weekly Zone Card',
+    'share_sub'                 => 'Download and share your week\'s achievement.',
+    'share_week_of'             => 'Week of',
+    'share_zone_label'          => 'Zone',
+    'share_streak'              => 'Day Streak',
+    'share_checkins'            => 'Check-ins This Week',
+    'share_weight_change'       => 'Weight Change',
+    'share_target_kcal'         => 'Daily Target',
+    'share_tagline'             => 'Track your nutrition at kcals.gr',
+    'share_download'            => 'Download Card',
+    'share_back'                => 'Back to Dashboard',
+    'share_no_data'             => 'No check-ins yet this week. Complete a check-in first!',
+    'nav_share'                 => 'My Week',
+
     // ---- Recovery Mode (v0.9.6) ----
     'dash_recovery_title'       => 'Recovery Mode Active',
     'dash_recovery_desc'        => 'High stress detected for 2+ consecutive check-ins. Your deficit has been reduced to 5%% of TDEE — suggested target: <strong>%d kcal/day</strong>. Your meal plan will focus on comfort-friendly, easy-to-digest foods. Take care of yourself first.',

@@ -417,4 +417,20 @@ return [
 
     'hiw_disclaimer'            => '⚠️ Το KCALS παρέχει εκτιμήσεις θερμίδων αποκλειστικά για <strong>ενημερωτικούς σκοπούς</strong>. Συμβουλευτείτε πάντα τον γιατρό σας ή εγγεγραμμένο διαιτολόγο πριν κάνετε σημαντικές αλλαγές στη διατροφή σας.',
     'hiw_sources'               => 'Πηγές: Mifflin MD et al. (1990) <em>Am J Clin Nutr</em> 51:241–247 · Harris-Benedict (1919) · ACSM Guidelines for Exercise Testing and Prescription.',
+
+    // ---- Zone Card (v0.9.8) ----
+    'share_page_title'          => 'Η Εβδομαδιαία μου Κάρτα Ζώνης – KCALS',
+    'share_h1'                  => 'Η Εβδομαδιαία μου Κάρτα Ζώνης',
+    'share_sub'                 => 'Κατέβασε και μοιράσου το επίτευγμα της εβδομάδας σου.',
+    'share_week_of'             => 'Εβδομάδα',
+    'share_zone_label'          => 'Ζώνη',
+    'share_streak'              => 'Ημέρες Σερί',
+    'share_checkins'            => 'Check-ins Αυτή την Εβδομάδα',
+    'share_weight_change'       => 'Μεταβολή Βάρους',
+    'share_target_kcal'         => 'Ημερήσιος Στόχος',
+    'share_tagline'             => 'Παρακολούθησε τη διατροφή σου στο kcals.gr',
+    'share_download'            => 'Λήψη Κάρτας',
+    'share_back'                => 'Πίσω στον Πίνακα',
+    'share_no_data'             => 'Δεν υπάρχουν check-ins αυτή την εβδομάδα. Κάνε πρώτα ένα check-in!',
+    'nav_share'                 => 'Η Εβδομάδα μου',
 ];

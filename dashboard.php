@@ -492,6 +492,12 @@ require_once __DIR__ . '/includes/header.php';
                     <?= $checkinIsEdit ? __('dash_update_checkin') : __('dash_save_checkin') ?>
                 </button>
             </form>
+            <div style="margin-top:.75rem; text-align:center;">
+                <a href="<?= BASE_URL ?>/share.php" class="btn btn-outline" style="width:100%; justify-content:center;">
+                    <i data-lucide="share-2" style="width:15px;height:15px;"></i>
+                    <?= __('nav_share') ?>
+                </a>
+            </div>
         </div>
 
         <!-- Health Tips -->
