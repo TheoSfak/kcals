@@ -170,6 +170,31 @@ require_once __DIR__ . '/includes/header.php';
         <?php endforeach; ?>
     </section>
 
+    <!-- ======== SECTION 5: Smart Insights ======== -->
+    <section class="hiw-section">
+        <div class="hiw-section-label">
+            <span>05</span> <?= __('hiw_s5_title') ?>
+        </div>
+
+        <?php
+        $insCards = [
+            ['hiw_insights_title', 'hiw_insights_body', 'brain'],
+            ['hiw_heatmap_title',  'hiw_heatmap_body',  'calendar-days'],
+            ['hiw_corr_title',     'hiw_corr_body',     'activity'],
+        ];
+        foreach ($insCards as [$titleKey, $bodyKey, $icon]): ?>
+        <div class="hiw-card">
+            <button class="hiw-card-btn" onclick="toggleCard(this)" aria-expanded="false">
+                <span class="hiw-card-title"><?= __($titleKey) ?></span>
+                <i data-lucide="chevron-down" class="hiw-chevron"></i>
+            </button>
+            <div class="hiw-card-body">
+                <p><?= __($bodyKey) ?></p>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </section>
+
     <!-- ======== DISCLAIMER + SOURCES ======== -->
     <section class="hiw-footer-note">
         <p><?= __('hiw_disclaimer') ?></p>

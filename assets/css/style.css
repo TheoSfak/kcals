@@ -1313,6 +1313,264 @@ footer {
 
 /* ========== / ACHIEVEMENTS ========== */
 
+/* ========== SMART INSIGHTS ========== */
+
+/* Page wrapper */
+.ins-page {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Hero strip */
+.ins-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+.ins-hero-text h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: .3rem;
+    color: var(--slate-dark);
+}
+.ins-hero-text p {
+    color: var(--slate-mid);
+    font-size: .95rem;
+    margin: 0;
+}
+
+/* Summary strip */
+.ins-summary-strip {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.ins-sum-item {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .75rem 1.25rem;
+    text-align: center;
+    min-width: 90px;
+}
+.ins-sum-val {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--slate-dark);
+    line-height: 1.1;
+}
+.ins-sum-val.green  { color: var(--green-dark); }
+.ins-sum-val.yellow { color: #D68910; }
+.ins-sum-val.red    { color: #C0392B; }
+.ins-sum-lbl {
+    font-size: .7rem;
+    color: var(--slate-mid);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-top: .3rem;
+}
+
+/* Generic insight card */
+.ins-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+}
+.ins-card-head {
+    margin-bottom: 1.25rem;
+}
+.ins-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--slate-dark);
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.ins-card-sub {
+    font-size: .8rem;
+    color: var(--slate-mid);
+    margin-top: .2rem;
+}
+.ins-empty {
+    text-align: center;
+    color: var(--slate-mid);
+    padding: 2rem;
+    margin: 0;
+}
+
+/* ---- Heatmap ---- */
+.ins-heatmap-wrap {
+    overflow-x: auto;
+    padding-bottom: .5rem;
+}
+.ins-heatmap-grid {
+    display: flex;
+    gap: 3px;
+    align-items: flex-start;
+    min-width: max-content;
+}
+.ins-heatmap-days {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 0;
+}
+.ins-heatmap-days span {
+    font-size: .65rem;
+    color: var(--slate-mid);
+    height: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 4px;
+    width: 16px;
+}
+.ins-heatmap-cols {
+    display: flex;
+    gap: 3px;
+}
+.ins-heatmap-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ins-heatmap-cell {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    background: #EBEDF0;
+    cursor: default;
+    flex-shrink: 0;
+}
+.ins-heatmap-cell.z-green  { background: #2ECC71; }
+.ins-heatmap-cell.z-yellow { background: #F39C12; }
+.ins-heatmap-cell.z-red    { background: #E74C3C; }
+.ins-heatmap-cell.empty    { background: #EBEDF0; }
+.ins-heatmap-cell.future   { background: transparent; }
+.ins-heatmap-months {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 14px;
+    gap: 3px;
+    margin-top: .4rem;
+    margin-left: 20px;
+    font-size: .65rem;
+    color: var(--slate-mid);
+}
+.ins-heatmap-legend {
+    margin-top: .75rem;
+    font-size: .75rem;
+    color: var(--slate-mid);
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    flex-wrap: wrap;
+}
+
+/* ---- Chart toggles ---- */
+.ins-chart-toggles {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.ins-toggle {
+    padding: .3rem .85rem;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--off-white);
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--slate-mid);
+    cursor: pointer;
+    transition: all .18s;
+}
+.ins-toggle.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+}
+
+/* ---- Correlations grid ---- */
+.ins-corr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+}
+.ins-corr-card {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: .88rem;
+    line-height: 1.5;
+}
+.ins-corr-icon { font-size: 1.3rem; flex-shrink: 0; }
+.ins-corr-body { color: var(--slate-dark); }
+.ins-corr-green  { background: #F0FDF4; border-color: #A7F3D0; }
+.ins-corr-yellow { background: #FEFCE8; border-color: #FDE68A; }
+.ins-corr-red    { background: #FFF5F5; border-color: #FECACA; }
+.ins-corr-blue   { background: #EFF6FF; border-color: #BFDBFE; }
+.ins-corr-purple { background: #F5F3FF; border-color: #DDD6FE; }
+.ins-corr-orange { background: #FFF7ED; border-color: #FED7AA; }
+
+/* ---- History table ---- */
+.ins-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+.ins-table thead tr {
+    border-bottom: 2px solid var(--border);
+}
+.ins-table th {
+    padding: .6rem .75rem;
+    text-align: left;
+    color: var(--slate-mid);
+    font-weight: 600;
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    white-space: nowrap;
+}
+.ins-table th:not(:first-child) { text-align: center; }
+.ins-table tbody tr {
+    border-bottom: 1px solid var(--border);
+}
+.ins-table tbody tr:hover { background: var(--off-white); }
+.ins-table td {
+    padding: .65rem .75rem;
+    vertical-align: middle;
+    text-align: center;
+}
+.ins-table td:first-child { text-align: left; }
+
+/* ---- Responsive ---- */
+@media (max-width: 860px) {
+    .ins-hero {
+        flex-direction: column;
+    }
+    .ins-heatmap-cell { width: 9px; height: 9px; }
+}
+@media (max-width: 540px) {
+    .ins-corr-grid { grid-template-columns: 1fr; }
+    .ins-summary-strip { gap: .6rem; }
+    .ins-sum-item { min-width: 70px; padding: .6rem .9rem; }
+    .ins-sum-val { font-size: 1.1rem; }
+}
+
+/* ========== / SMART INSIGHTS ========== */
+
 /* ---------- Print Styles ---------- */
 .no-print { }
 .print-only { display: none; }
