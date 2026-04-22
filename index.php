@@ -394,38 +394,6 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </section>
 
-<!-- ==================== HOW IT WORKS ==================== -->
-<section class="section" id="how-it-works">
-    <div class="container">
-        <div class="text-center mb-3">
-            <h2><?= __('how_title') ?></h2>
-            <p><?= __('how_sub') ?></p>
-        </div>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon"><i data-lucide="user-plus"></i></div>
-                <h3><?= __('how_1_title') ?></h3>
-                <p><?= __('how_1_desc') ?></p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i data-lucide="calculator"></i></div>
-                <h3><?= __('how_2_title') ?></h3>
-                <p><?= __('how_2_desc') ?></p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i data-lucide="calendar-check"></i></div>
-                <h3><?= __('how_3_title') ?></h3>
-                <p><?= __('how_3_desc') ?></p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon"><i data-lucide="trending-up"></i></div>
-                <h3><?= __('how_4_title') ?></h3>
-                <p><?= __('how_4_desc') ?></p>
-            </div>
-        </div>
-    </div>
-</section>
-
 <!-- ==================== ZONE EXPLAINER ==================== -->
 <section class="section" style="background:var(--white); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
     <div class="container">
