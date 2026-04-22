@@ -76,6 +76,7 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
                 <li><a href="<?= BASE_URL ?>/settings.php"    class="<?= $activeNav==='preferences' ? 'active':'' ?>"><i data-lucide="sliders-horizontal"></i><?= __('nav_preferences') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/how_it_works.php" class="<?= $activeNav==='how_it_works' ? 'active':'' ?>"><i data-lucide="book-open"></i><?= __('nav_how_it_works') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/share.php" class="<?= $activeNav==='share' ? 'active':'' ?>"><i data-lucide="share-2"></i><?= __('nav_share') ?></a></li>
+                <li><a href="<?= BASE_URL ?>/achievements.php" class="<?= $activeNav==='achievements' ? 'active':'' ?>"><i data-lucide="trophy"></i><?= __('nav_achievements') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/logout.php"      class="btn-nav"><i data-lucide="log-out"></i><?= __('nav_logout') ?></a></li>
             <?php else: ?>
                 <li><a href="<?= BASE_URL ?>/index.php"       class="<?= $activeNav==='home' ? 'active':'' ?>"><?= __('nav_home') ?></a></li>

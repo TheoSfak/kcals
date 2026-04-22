@@ -4,6 +4,7 @@
 // ============================================================
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/engine/calculator.php';
+require_once __DIR__ . '/engine/achievements.php';
 
 requireLogin();
 
@@ -15,6 +16,7 @@ $userId = (int) $_SESSION['user_id'];
 $checkinSuccess = false;
 $checkinIsEdit  = false;
 $checkinErrors  = [];
+$newBadges      = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'checkin') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
@@ -70,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     workout_minutes  = VALUES(workout_minutes)
             ');
             $upsert->execute([$userId, $weightKg, $stressLevel, $motivationLv, $energyLevel, $sleepLevel, $notes, $workoutType, $workoutMinutes]);
-            $checkinSuccess = true;
+            $checkinSuccess  = true;
+            $newBadges = checkAndAwardAchievements($userId, $db);
         }
     }
 }
@@ -171,6 +174,22 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
         <?= $checkinIsEdit ? __('dash_checkin_updated') : __('dash_checkin_saved') ?>
     </div>
+    <?php if (!empty($newBadges)): ?>
+    <div id="ach-toast-container">
+        <?php foreach ($newBadges as $slug):
+            $a = getAchievementBySlug($slug); if (!$a) continue; ?>
+        <div class="ach-toast ach-toast-<?= htmlspecialchars($a['tier']) ?>">
+            <div class="ach-toast-icon"><?= $a['icon'] ?></div>
+            <div class="ach-toast-body">
+                <strong><?= __('ach_new_title') ?></strong>
+                <div><?= __('ach_new_unlocked') ?> <em><?= htmlspecialchars(__($a['title'])) ?></em></div>
+            </div>
+            <button class="ach-toast-close" onclick="this.parentElement.remove()">×</button>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <script>setTimeout(function(){ document.querySelectorAll('.ach-toast').forEach(function(t){ t.classList.add('fading'); setTimeout(function(){ t.remove(); },400); }); }, 5000);</script>
+    <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($isPlateau): ?>

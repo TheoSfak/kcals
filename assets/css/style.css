@@ -1158,6 +1158,161 @@ footer {
 
 /* ========== / HOMEPAGE v2 ========== */
 
+/* ========== ACHIEVEMENTS ========== */
+
+/* Hero strip */
+.ach-hero {
+    background: linear-gradient(135deg, var(--green-dark) 0%, #1a5c36 100%);
+    padding: 2.5rem 1.25rem 2rem;
+    color: #fff;
+}
+.ach-hero-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+.ach-hero-title {
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    font-weight: 900;
+    margin-bottom: .4rem;
+    color: #fff;
+}
+.ach-hero-sub { color: rgba(255,255,255,.8); font-size: .95rem; }
+
+.ach-progress-circle { width: 80px; height: 80px; flex-shrink: 0; }
+
+/* Filter tabs */
+.ach-filters {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    padding-bottom: .5rem;
+}
+.ach-filter-btn {
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--slate-dark);
+    padding: .35rem .85rem;
+    border-radius: 50px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s;
+}
+.ach-filter-btn:hover  { border-color: var(--green); color: var(--green-dark); }
+.ach-filter-btn.active { background: var(--green-dark); color: #fff; border-color: var(--green-dark); }
+
+/* Badge grid */
+.ach-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+/* Badge card */
+.ach-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    transition: transform .2s, box-shadow .2s;
+    position: relative;
+    cursor: default;
+}
+.ach-card.earned {
+    box-shadow: 0 4px 18px rgba(44,62,80,.09);
+    border-color: var(--border);
+}
+.ach-card.earned:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px rgba(44,62,80,.13);
+}
+.ach-card.locked {
+    background: #f5f7fa;
+    opacity: .55;
+    filter: grayscale(60%);
+}
+
+/* Tier border colors */
+.ach-card.earned.tier-bronze   { border-color: #cd7f32; }
+.ach-card.earned.tier-silver   { border-color: #a8a9ad; }
+.ach-card.earned.tier-gold     { border-color: #ffd700; box-shadow: 0 4px 20px rgba(255,215,0,.25); }
+.ach-card.earned.tier-platinum { border-color: #b9f2ff; box-shadow: 0 4px 24px rgba(100,220,255,.3); }
+
+.ach-card-icon  { font-size: 2.2rem; line-height: 1; margin-bottom: .1rem; }
+.ach-card-tier  { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--slate-mid); }
+.ach-card-title { font-size: .82rem; font-weight: 800; color: var(--slate-dark); line-height: 1.25; }
+.ach-card-desc  { font-size: .72rem; color: var(--slate-mid); line-height: 1.4; }
+.ach-card-earned { font-size: .68rem; color: var(--green-dark); font-weight: 600; margin-top: .25rem; }
+.ach-card-locked-lbl {
+    font-size: .68rem; color: var(--slate-mid);
+    display: flex; align-items: center; gap: .2rem;
+    margin-top: .25rem;
+}
+
+/* Tier badge glow for gold/platinum */
+.tier-gold.earned    .ach-card-tier { color: #b8860b; }
+.tier-platinum.earned .ach-card-tier { color: #5cb8ce; }
+.tier-bronze.earned  .ach-card-tier { color: #a0522d; }
+.tier-silver.earned  .ach-card-tier { color: #808080; }
+
+/* Toast notifications */
+#ach-toast-container {
+    position: fixed;
+    top: 80px;
+    right: 1rem;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    pointer-events: none;
+}
+.ach-toast {
+    background: #fff;
+    border-radius: 14px;
+    padding: .75rem 1rem;
+    box-shadow: 0 8px 32px rgba(44,62,80,.18);
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 260px;
+    max-width: 340px;
+    pointer-events: all;
+    animation: toastIn .35s ease;
+    border-left: 5px solid var(--green);
+    transition: opacity .4s, transform .4s;
+}
+.ach-toast.fading { opacity: 0; transform: translateX(30px); }
+.ach-toast-bronze   { border-left-color: #cd7f32; }
+.ach-toast-silver   { border-left-color: #a8a9ad; }
+.ach-toast-gold     { border-left-color: #ffd700; }
+.ach-toast-platinum { border-left-color: #5cb8ce; }
+.ach-toast-icon { font-size: 1.8rem; flex-shrink: 0; }
+.ach-toast-body { flex: 1; font-size: .82rem; }
+.ach-toast-body strong { display: block; font-size: .85rem; margin-bottom: .1rem; }
+.ach-toast-close {
+    background: none; border: none; font-size: 1.2rem;
+    cursor: pointer; color: var(--slate-mid); padding: 0 .2rem; line-height: 1;
+}
+@keyframes toastIn {
+    from { opacity:0; transform:translateX(30px); }
+    to   { opacity:1; transform:translateX(0); }
+}
+
+@media (max-width: 600px) {
+    .ach-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .ach-hero-inner { flex-direction: column; align-items: flex-start; }
+}
+
+/* ========== / ACHIEVEMENTS ========== */
+
 /* ---------- Print Styles ---------- */
 .no-print { }
 .print-only { display: none; }
