@@ -118,6 +118,7 @@ p  { color: var(--slate-mid); }
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
     padding: 0.4rem 0.9rem;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -125,6 +126,7 @@ p  { color: var(--slate-mid); }
     color: var(--slate-mid);
     transition: background var(--transition), color var(--transition);
 }
+.navbar-nav a svg { display: block; flex-shrink: 0; }
 
 .navbar-nav a:hover,
 .navbar-nav a.active {
