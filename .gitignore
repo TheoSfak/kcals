@@ -19,3 +19,6 @@ desktop.ini
 
 # Productive-site snapshot / deploy artefacts (not part of the repo)
 productive-site/
+
+# One-shot patch helper (generated on demand, never shipped in releases)
+_kcals_patch.php
