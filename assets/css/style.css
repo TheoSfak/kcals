@@ -916,6 +916,248 @@ footer {
     .disclaimer-modal h2 { font-size: 1.1rem; }
 }
 
+/* ========== HOMEPAGE v2 (landing page) ========== */
+
+/* Hero badge */
+.hero-badge {
+    display: inline-block;
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: .3rem .9rem;
+    border-radius: 50px;
+    margin-bottom: 1.1rem;
+}
+
+/* Trust badge line */
+.lp-trust-badge {
+    font-size: .78rem;
+    color: var(--slate-mid);
+    margin-top: .75rem;
+}
+
+/* Hero photo mosaic */
+.hero-mosaic {
+    position: relative;
+    flex: 0 0 auto;
+    width: 440px;
+}
+.mosaic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem;
+    border-radius: 20px;
+    overflow: hidden;
+}
+.mosaic-tall img,
+.mosaic-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.mosaic-tall {
+    height: 380px;
+    border-radius: 16px;
+    overflow: hidden;
+}
+.mosaic-col {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+.mosaic-sm {
+    height: 187px;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* Floating stat cards on mosaic */
+.mosaic-float {
+    position: absolute;
+    background: #fff;
+    border-radius: 14px;
+    padding: .6rem .9rem;
+    box-shadow: 0 6px 24px rgba(44,62,80,.14);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    pointer-events: none;
+}
+.mosaic-float-tl { top: 18px; left: -18px; }
+.mosaic-float-br { bottom: 22px; right: -14px; }
+.mf-label { font-size: .68rem; color: var(--slate-mid); font-weight: 600; display: block; }
+.mf-value { font-size: .95rem; font-weight: 800; color: var(--slate-dark); }
+.mf-value.green { color: var(--green-dark); }
+
+/* Two-column layout used for multiple sections */
+.lp-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3.5rem;
+    align-items: center;
+}
+.lp-feat-reverse { direction: rtl; }
+.lp-feat-reverse > * { direction: ltr; }
+
+/* Section badge (pill label) */
+.lp-section-badge {
+    display: inline-block;
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: .25rem .8rem;
+    border-radius: 50px;
+    margin-bottom: .85rem;
+}
+
+/* Image wrapper */
+.lp-img-wrap {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(44,62,80,.12);
+}
+.lp-img-wrap img {
+    width: 100%;
+    height: 360px;
+    object-fit: cover;
+    display: block;
+    transition: transform .5s ease;
+}
+.lp-img-wrap:hover img { transform: scale(1.03); }
+
+/* Text side */
+.lp-text-side h2 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: .85rem;
+}
+.lp-text-side p {
+    color: var(--slate-mid);
+    line-height: 1.75;
+    font-size: .95rem;
+}
+
+/* Nutrition facts strip */
+.lp-nutrition-section { background: var(--green-light); }
+.lp-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+.lp-fact {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1rem .75rem;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(44,62,80,.06);
+}
+.lp-fact-num {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--green-dark);
+    line-height: 1;
+    margin-bottom: .3rem;
+}
+.lp-fact-lbl {
+    font-size: .72rem;
+    color: var(--slate-mid);
+    line-height: 1.4;
+}
+
+/* Testimonials */
+.lp-testi-section { background: #f8fbff; }
+.lp-testi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+}
+.lp-testi-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(44,62,80,.07);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: box-shadow .2s, transform .2s;
+}
+.lp-testi-card:hover { box-shadow: 0 8px 32px rgba(44,62,80,.12); transform: translateY(-3px); }
+.lp-testi-featured {
+    border: 2px solid var(--green);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 36px rgba(46,204,113,.18);
+}
+.lp-testi-featured:hover { transform: translateY(-9px); }
+.lp-testi-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--green-dark);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.lp-testi-quote {
+    font-size: .9rem;
+    line-height: 1.65;
+    color: var(--slate-dark);
+    flex: 1;
+}
+.lp-testi-foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: .5rem;
+}
+.lp-testi-role { font-size: .75rem; color: var(--slate-mid); margin-top: .15rem; }
+.lp-result-badge {
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .25rem .6rem;
+    border-radius: 50px;
+    white-space: nowrap;
+}
+
+/* CTA section */
+.lp-cta-section {
+    background: linear-gradient(135deg, var(--green-dark) 0%, #1a5c36 100%);
+    padding: 5rem 1.25rem;
+}
+.lp-cta-inner { color: #fff; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .hero-mosaic { width: 100%; max-width: 440px; }
+    .lp-two-col { grid-template-columns: 1fr; gap: 2rem; }
+    .lp-feat-reverse { direction: ltr; }
+    .lp-testi-grid { grid-template-columns: 1fr; }
+    .lp-testi-featured { transform: none; }
+    .lp-facts { grid-template-columns: 1fr 1fr; }
+    .mosaic-float-tl { left: 8px; }
+    .mosaic-float-br { right: 8px; }
+}
+@media (max-width: 540px) {
+    .hero-mosaic { display: none; }
+    .lp-facts { grid-template-columns: 1fr 1fr 1fr; gap: .5rem; }
+    .lp-fact-num { font-size: 1.1rem; }
+}
+
+/* ========== / HOMEPAGE v2 ========== */
+
 /* ---------- Print Styles ---------- */
 .no-print { }
 .print-only { display: none; }
