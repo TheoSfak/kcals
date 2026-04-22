@@ -1141,8 +1141,44 @@ footer {
 .lp-cta-section {
     background: linear-gradient(135deg, var(--green-dark) 0%, #1a5c36 100%);
     padding: 5rem 1.25rem;
+    position: relative;
+    overflow: hidden;
 }
-.lp-cta-inner { color: #fff; }
+/* Frosted glass card in the CTA */
+.lp-cta-inner {
+    color: #fff;
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 24px;
+    padding: 3rem 2.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+/* Decorative blurred blobs behind the card */
+.lp-cta-section::before,
+.lp-cta-section::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: .35;
+    pointer-events: none;
+}
+.lp-cta-section::before {
+    width: 340px; height: 340px;
+    background: #52e090;
+    top: -80px; left: -80px;
+}
+.lp-cta-section::after {
+    width: 280px; height: 280px;
+    background: #a8ffcb;
+    bottom: -60px; right: -60px;
+}
 
 /* Responsive */
 @media (max-width: 900px) {
