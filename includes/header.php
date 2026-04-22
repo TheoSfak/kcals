@@ -8,7 +8,14 @@
 // ============================================================
 require_once __DIR__ . '/auth.php';
 
-$pageTitle  = $pageTitle ?? 'KCALS – Smart Nutrition';
+// Load general settings (site name, tagline)
+$_genSettings = function_exists('getSettings')
+    ? getSettings(['general_site_name','general_tagline'])
+    : [];
+$_siteName = trim($_genSettings['general_site_name'] ?? '') ?: 'KCALS';
+$_tagline  = trim($_genSettings['general_tagline']  ?? '') ?: 'Smart Nutrition & Wellness';
+
+$pageTitle  = $pageTitle ?? ($_siteName . ' – ' . $_tagline);
 $activeNav  = $activeNav ?? '';
 $isLoggedIn = isLoggedIn();
 $_lang      = $GLOBALS['_kcals_lang'] ?? 'en';
@@ -20,7 +27,7 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?></title>
-    <meta name="description" content="KCALS – Personalised weekly nutrition plans, progress tracking and wellness tips.">
+    <meta name="description" content="<?= htmlspecialchars($_siteName . ' – ' . $_tagline) ?> | Personalised weekly nutrition plans, progress tracking and wellness tips.">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,7 +106,7 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
 
 <nav class="navbar">
     <div class="navbar-inner">
-        <a class="navbar-brand" href="<?= BASE_URL ?>/index.php">KCALS<span>.</span></a>
+        <a class="navbar-brand" href="<?= BASE_URL ?>/index.php"><?= htmlspecialchars($_siteName) ?><span>.</span></a>
 
         <ul class="navbar-nav">
             <?php if ($isLoggedIn): ?>
