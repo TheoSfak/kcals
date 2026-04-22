@@ -208,6 +208,7 @@ require_once __DIR__ . '/includes/header.php';
             <p>Check for new versions on GitHub and apply them automatically — code + database migrations.</p>
         </div>
         <div class="admin-card-body">
+            <input type="hidden" id="update-csrf-token" value="<?= htmlspecialchars(csrfToken()) ?>">
 
             <!-- Version display -->
             <div class="update-version-row">
@@ -249,7 +250,7 @@ require_once __DIR__ . '/includes/header.php';
 </div><!-- /#tab-updates -->
 
 <script>
-/* ---- Tab switching ---- */
+/* Tab switching */
 function switchTab(name) {
     document.querySelectorAll('.settings-tab-btn').forEach(function(b) {
         b.classList.toggle('active', b.getAttribute('onclick').indexOf("'" + name + "'") !== -1);
@@ -259,6 +260,9 @@ function switchTab(name) {
         p.classList.toggle('active', p.id === 'tab-' + name);
     });
     history.replaceState(null, '', location.pathname + '?tab=' + name);
+    if (name === 'updates' && document.getElementById('ver-latest').textContent === '—') {
+        checkForUpdate();
+    }
 }
 
 /* ---- SMTP eye toggle ---- */
@@ -357,7 +361,7 @@ function applyUpdate() {
     fetch('<?= BASE_URL ?>/admin/ajax/apply_update.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'csrf_token=<?= urlencode(csrfToken()) ?>'
+        body: 'csrf_token=' + encodeURIComponent(document.getElementById('update-csrf-token').value)
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
