@@ -363,6 +363,51 @@ return [
     'settings_recharge_h'       => 'Hormetic Recharge Day',
     'settings_recharge_tip'     => 'Choose the day of the week that gets +150 kcal above your target, with a complex-carb-heavy meal plan to prevent metabolic adaptation (default: Wednesday).',
 
+    // ---- How It Works page ----
+    'nav_how_it_works'          => 'How It Works',
+    'hiw_page_title'            => 'How It Works – KCALS',
+    'hiw_hero_title'            => 'How KCALS Works',
+    'hiw_hero_sub'              => 'No guesswork. No AI hype. Every number this app shows you comes from a published scientific formula or a transparent rule you can read right here.',
+
+    'hiw_s1_title'              => 'Core Calculations',
+    'hiw_bmr_title'             => '🔥 Basal Metabolic Rate (BMR)',
+    'hiw_bmr_body'              => 'BMR is the number of calories your body burns at complete rest — just to keep your heart beating, lungs breathing and cells working. We use the <strong>Mifflin-St Jeor equation</strong> (1990), the most accurate formula for the general population:<br><br><em>Men:</em> (10 × weight kg) + (6.25 × height cm) − (5 × age) + 5<br><em>Women:</em> (10 × weight kg) + (6.25 × height cm) − (5 × age) − 161',
+    'hiw_tdee_title'            => '🏃 Total Daily Energy Expenditure (TDEE)',
+    'hiw_tdee_body'             => 'TDEE = BMR × an <strong>activity multiplier</strong> that reflects how much you move each day. Sedentary (desk job, no exercise) uses ×1.2; Extra Active (physical job + hard training) uses ×1.9. This is your true maintenance calorie level — eat at this number and your weight stays the same.',
+    'hiw_zones_title'           => '🎯 Calorie Target & Psychological Zones',
+    'hiw_zones_body'            => 'Rather than forcing everyone into a harsh 500 kcal deficit, KCALS reads your <strong>stress and motivation levels</strong> at each check-in and picks the right zone:<ul><li><strong>🟢 Green (low stress + high motivation)</strong> — 25% deficit for maximum fat loss</li><li><strong>🟡 Yellow (middle ground)</strong> — 15% deficit for steady, sustainable progress</li><li><strong>🔴 Red (high stress or low motivation)</strong> — 8% deficit to build the habit first</li></ul>',
+
+    'hiw_s2_title'              => 'Smart Adaptive Systems',
+    'hiw_plateau_title'         => '📊 Plateau Detection',
+    'hiw_plateau_body'          => 'If your logged weight shows <strong>no meaningful change over 14 consecutive days</strong>, KCALS detects a metabolic plateau. The next plan resets your calories to 100% TDEE for one full week — a deliberate "reboot" that refreshes leptin signalling and breaks the stall.',
+    'hiw_recal_title'           => '🔄 Adaptive TDEE Recalibration',
+    'hiw_recal_body'            => 'Your calculated TDEE is an estimate. KCALS compares your <strong>actual rate of weight change</strong> against the expected rate implied by your deficit. If reality and theory diverge by more than 10%, the TDEE is automatically corrected so future targets are more accurate.',
+    'hiw_recharge_title'        => '⚡ Hormetic Recharge Day',
+    'hiw_recharge_body'         => 'Once a week, on the day you choose, your calorie target is raised by <strong>+150 kcal above TDEE</strong> and the meal plan shifts toward complex carbohydrates. This deliberate weekly spike — called a hormetic stressor — prevents metabolic adaptation and keeps fat-loss momentum going over longer diets.',
+    'hiw_recovery_title'        => '🧘 Recovery Mode',
+    'hiw_recovery_body'         => 'If your stress level is ≥ 8 for <strong>two or more consecutive check-ins</strong>, KCALS automatically activates Recovery Mode. Your deficit drops to just 5% of TDEE (almost maintenance) and the meal plan shifts to comfort-friendly, easy-to-digest foods. Recovery Mode turns off automatically once your stress falls below 6.',
+    'hiw_sleep_title'           => '😴 Sleep Factor',
+    'hiw_sleep_body'            => 'Poor sleep raises ghrelin (hunger hormone) and lowers willpower. When you log a sleep quality of <strong>4 or below</strong>, KCALS <em>halves</em> your calorie deficit for that day and steers the plan toward high-protein, high-fibre foods that fight hunger most effectively with fewest calories.',
+    'hiw_workout_title'         => '💪 Workout Boost',
+    'hiw_workout_body'          => 'When you log a workout, KCALS estimates the calories burned (based on type and duration) and <strong>adds them back</strong> to your daily target. This preserves your planned deficit even on training days — so you don\'t under-eat and compromise recovery.',
+
+    'hiw_s3_title'              => 'Meal Planning',
+    'hiw_builder_title'         => '🍽️ Smart Meal Builder',
+    'hiw_builder_body'          => 'The meal builder selects real foods from a curated database and calculates exact portion sizes to hit your daily calorie target within ±30 kcal. Foods are scored by category (protein, carb, vegetable, fat, dairy, fruit) and your preferences (cuisine style, allergies, exclusions) filter the eligible list before any selection is made.',
+    'hiw_macros_title'          => '🏆 Macro Ratios',
+    'hiw_macros_body'           => 'KCALS targets a <strong>balanced macro split</strong> at every meal:<ul><li>Protein: ~30% (muscle preservation, satiety)</li><li>Carbohydrates: ~40% (energy, fibre)</li><li>Fat: ~30% (hormones, vitamin absorption)</li></ul>On Recharge Day these shift toward 55% carbs. In Recovery Mode the plan moves to 48% carbs / 38% protein for comfort-food satisfaction.',
+    'hiw_buffer_title'          => '🎂 Social Buffer',
+    'hiw_buffer_body'           => 'Mon–Fri your daily target is reduced by <strong>150 kcal/day</strong> (saving 750 kcal). On Saturday those saved calories are added back, giving you a ~750 kcal bonus for social meals, dinners out or a treat — without breaking your weekly calorie balance.',
+
+    'hiw_s4_title'              => 'Personalisation',
+    'hiw_event_title'           => '🗓️ Goal Event Countdown',
+    'hiw_event_body'            => 'Set a target date (holiday, wedding, reunion) and a goal weight. KCALS calculates your required weekly loss rate and tells you whether it\'s achievable safely (≤0.7 kg/week). If the goal is too aggressive, it shows the realistic weight you <em>can</em> reach by that date instead.',
+    'hiw_prefs_title'           => '🌿 Food Preferences & Exclusions',
+    'hiw_prefs_body'            => 'Choose your cuisine style (Classic Greek / Mediterranean / World Explorer), flag any allergies, and exclude specific foods you dislike. Every meal plan generated after saving these preferences will automatically respect every single rule.',
+
+    'hiw_disclaimer'            => '⚠️ KCALS provides calorie estimates for <strong>informational purposes only</strong>. Always consult your doctor or a registered dietitian before making significant changes to your diet.',
+    'hiw_sources'               => 'Sources: Mifflin MD et al. (1990) <em>Am J Clin Nutr</em> 51:241–247 · Harris-Benedict (1919) · ACSM Guidelines for Exercise Testing and Prescription.',
+
     // ---- Recovery Mode (v0.9.6) ----
     'dash_recovery_title'       => 'Recovery Mode Active',
     'dash_recovery_desc'        => 'High stress detected for 2+ consecutive check-ins. Your deficit has been reduced to 5%% of TDEE — suggested target: <strong>%d kcal/day</strong>. Your meal plan will focus on comfort-friendly, easy-to-digest foods. Take care of yourself first.',
