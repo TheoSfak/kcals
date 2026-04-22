@@ -118,18 +118,18 @@ p  { color: var(--slate-mid); }
     display: inline-flex;
     flex-direction: row;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     white-space: nowrap;
-    padding: 0.4rem 0.9rem;
+    padding: 0.35rem 0.6rem;
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: 0.78rem;
     font-weight: 500;
     color: var(--slate-mid);
     transition: background var(--transition), color var(--transition);
 }
 .navbar-nav a svg {
-    width: 15px;
-    height: 15px;
+    width: 13px;
+    height: 13px;
     flex-shrink: 0;
     vertical-align: middle;
 }
