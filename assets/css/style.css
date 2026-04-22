@@ -116,8 +116,9 @@ p  { color: var(--slate-mid); }
 
 .navbar-nav a {
     display: inline-flex;
+    flex-direction: row;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     white-space: nowrap;
     padding: 0.4rem 0.9rem;
     border-radius: 8px;
@@ -126,7 +127,12 @@ p  { color: var(--slate-mid); }
     color: var(--slate-mid);
     transition: background var(--transition), color var(--transition);
 }
-.navbar-nav a svg { display: block; flex-shrink: 0; }
+.navbar-nav a svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
 
 .navbar-nav a:hover,
 .navbar-nav a.active {
