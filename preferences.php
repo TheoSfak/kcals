@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Invalid request.');
     }
 
-    $adventure    = max(1, min(3, (int) ($_POST['food_adventure'] ?? 2)));
+    $adventure    = max(0, min(3, (int) ($_POST['food_adventure'] ?? 2)));
     $allergyMap   = ['gluten','dairy','nuts','eggs','shellfish','soy'];
     $allergyVals  = [];
     foreach ($allergyMap as $a) {
@@ -154,7 +154,7 @@ require_once __DIR__ . '/includes/header.php';
 /* ======== Adventure option cards ======== */
 .adv-grid {
     display: grid;
-    grid-template-columns: repeat(3,1fr);
+    grid-template-columns: repeat(4,1fr);
     gap: .875rem;
     margin-bottom: 1.75rem;
 }
@@ -361,6 +361,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="adv-grid">
                 <?php
                 $advLevels = [
+                    0 => ['emoji'=>'⚡','title'=>__('pref_adv0_title'),'desc'=>__('pref_adv0_desc')],
                     1 => ['emoji'=>'🇬🇷','title'=>__('pref_adv1_title'),'desc'=>__('pref_adv1_desc')],
                     2 => ['emoji'=>'🌊','title'=>__('pref_adv2_title'),'desc'=>__('pref_adv2_desc')],
                     3 => ['emoji'=>'🌍','title'=>__('pref_adv3_title'),'desc'=>__('pref_adv3_desc')],

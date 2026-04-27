@@ -22,6 +22,7 @@ class MealBuilder
     private ?int   $maxPrepMinutes;
     private array  $avoidMealFamilies;
     private bool   $quickMainOnly;
+    private bool   $superSimple;
 
     /**
      * @param array $profile  Optional preference profile:
@@ -34,18 +35,22 @@ class MealBuilder
         $this->month     = $month;
         $this->dislikes  = array_map('mb_strtolower', $dislikes);
         $this->adventure  = (int) ($profile['adventure']    ?? 2);
+        $this->superSimple = $this->adventure === 0;
         $this->allergies  = (array) ($profile['allergies']   ?? []);
         $this->excluded   = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
         $this->sleepBoost       = (bool) ($profile['sleep_boost']        ?? false);
         $this->strengthDay     = (bool) ($profile['strength_day']      ?? false);
         $this->complexCarbBias = (bool) ($profile['complex_carb_bias'] ?? false);
         $this->comfortFoodMode = (bool) ($profile['comfort_food_mode'] ?? false);
-        $this->maxPrepMinutes = isset($profile['max_prep_minutes']) ? max(1, (int) $profile['max_prep_minutes']) : null;
-        $this->avoidMealFamilies = array_values(array_unique(array_map(
+        $this->maxPrepMinutes = isset($profile['max_prep_minutes']) ? max(1, (int) $profile['max_prep_minutes']) : ($this->superSimple ? 20 : null);
+        $this->avoidMealFamilies = array_values(array_unique(array_merge(
+            $this->superSimple ? ['heavy_mixed', 'shellfish', 'red_meat', 'pork', 'lamb'] : [],
+            array_map(
             'strval',
             (array) ($profile['avoid_meal_families'] ?? [])
+            )
         )));
-        $this->quickMainOnly = (bool) ($profile['quick_main_only'] ?? false);
+        $this->quickMainOnly = (bool) ($profile['quick_main_only'] ?? false) || $this->superSimple;
     }
 
     // ──────────────────────────────────────────────────────────
@@ -351,7 +356,7 @@ class MealBuilder
 
         // Cuisine adventure filter
         $cuisineSQL = '';
-        if ($this->adventure === 1) {
+        if ($this->adventure <= 1) {
             $cuisineSQL = " AND cuisine_tag IN ('universal','greek')";
         } elseif ($this->adventure === 2) {
             $cuisineSQL = " AND cuisine_tag IN ('universal','greek','mediterranean')";
@@ -453,6 +458,18 @@ class MealBuilder
     private function foodAllowedForPlanner(array $food): bool
     {
         $family = $this->mealFamily($food);
+        if ($this->superSimple) {
+            $type = (string) ($food['food_type'] ?? '');
+            $prep = (int) ($food['prep_minutes'] ?? 0);
+
+            if ($family === 'fish' && $prep > 5) {
+                return false;
+            }
+            if ($type === 'mixed' && $prep > 10) {
+                return false;
+            }
+        }
+
         if (in_array($family, $this->avoidMealFamilies, true)) {
             return false;
         }

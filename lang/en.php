@@ -369,6 +369,8 @@ return [
     'pref_sub'              => 'Help us build the perfect meal plan for you — takes about 60 seconds.',
     'pref_step1_title'      => 'How adventurous is your palate?',
     'pref_step1_sub'        => 'Choose the cuisine style you enjoy most.',
+    'pref_adv0_title'       => 'Super Simple',
+    'pref_adv0_desc'        => 'Student-friendly meals for minimum cooking time and basic ingredients.',
     'pref_adv1_title'       => 'Classic Greek',
     'pref_adv1_desc'        => 'Traditional Greek dishes — feta, horta, fasolada, souvlaki.',
     'pref_adv2_title'       => 'Mediterranean',
@@ -460,7 +462,7 @@ return [
     'hiw_event_title'           => '🗓️ Goal Event Countdown',
     'hiw_event_body'            => 'Set a target date (holiday, wedding, reunion) and a goal weight. KCALS calculates your required weekly loss rate and tells you whether it\'s achievable safely (≤0.7 kg/week). If the goal is too aggressive, it shows the realistic weight you <em>can</em> reach by that date instead.',
     'hiw_prefs_title'           => '🌿 Food Preferences & Exclusions',
-    'hiw_prefs_body'            => 'Choose your cuisine style (Classic Greek / Mediterranean / World Explorer), flag any allergies, and exclude specific foods you dislike. Every meal plan generated after saving these preferences will automatically respect every single rule.',
+    'hiw_prefs_body'            => 'Choose your cuisine style (Super Simple / Classic Greek / Mediterranean / World Explorer), flag any allergies, and exclude specific foods you dislike. Every meal plan generated after saving these preferences will automatically respect every single rule.',
 
     'hiw_disclaimer'            => '⚠️ KCALS provides calorie estimates for <strong>informational purposes only</strong>. Always consult your doctor or a registered dietitian before making significant changes to your diet.',
     'hiw_sources'               => 'Sources: Mifflin MD et al. (1990) <em>Am J Clin Nutr</em> 51:241–247 · Harris-Benedict (1919) · ACSM Guidelines for Exercise Testing and Prescription.',

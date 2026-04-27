@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $errors[] = __('err_invalid_submit');
     } else {
-        $adventure   = max(1, min(3, (int) ($_POST['food_adventure'] ?? 2)));
+        $adventure   = max(0, min(3, (int) ($_POST['food_adventure'] ?? 2)));
         $rechargeDay = max(1, min(7, (int) ($_POST['recharge_day']   ?? 3)));
         $allergyKeys = ['gluten','dairy','nuts','eggs','shellfish','soy'];
         $allergyVals = [];
@@ -190,7 +190,7 @@ require_once __DIR__ . '/includes/header.php';
 }
 .adv-grid-sm {
     display: grid;
-    grid-template-columns: repeat(3,1fr);
+    grid-template-columns: repeat(4,1fr);
     gap: .75rem;
 }
 @media (max-width:520px){ .adv-grid-sm { grid-template-columns:1fr; } }
@@ -306,6 +306,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="adv-grid-sm">
                 <?php
                 $advDefs = [
+                    0 => ['emoji'=>'⚡','title'=>__('pref_adv0_title')],
                     1 => ['emoji'=>'🇬🇷','title'=>__('pref_adv1_title')],
                     2 => ['emoji'=>'🌊','title'=>__('pref_adv2_title')],
                     3 => ['emoji'=>'🌍','title'=>__('pref_adv3_title')],
