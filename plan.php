@@ -125,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
 
         $dayNames    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
         $planData    = [];
+        $planSchedule = [];
         $usedFoodIds = []; // All food IDs used this week (for variety)
 
         foreach ($dayNames as $day) {
@@ -153,6 +154,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                 } else {
                     $profile['complex_carb_bias'] = false;
                 }
+                $planSchedule[$day][$slot] = [
+                    'target'  => $kcalTarget,
+                    'profile' => $profile,
+                ];
                 $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
                 $meal = null;
                 foreach ($remainingIncludeIds as $includeIndex => $includeId) {
@@ -179,6 +184,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
             $planData[$day] = $dayMeals;
         }
 
+        // Strict second pass: if any saved must-include food did not land naturally
+        // or during the first forced pass, replace an ordinary compatible meal.
+        $foodIdsInPlan = [];
+        foreach ($planData as $dayMeals) {
+            foreach ($dayMeals as $meal) {
+                foreach (($meal['components'] ?? []) as $component) {
+                    $componentFoodId = (int) ($component['food_id'] ?? 0);
+                    if ($componentFoodId > 0) {
+                        $foodIdsInPlan[] = $componentFoodId;
+                    }
+                }
+            }
+        }
+        $foodIdsInPlan = array_values(array_unique($foodIdsInPlan));
+        $missingIncludeIds = array_values(array_diff($includedIds, $foodIdsInPlan, $excludedIds));
+
+        foreach ($missingIncludeIds as $missingIncludeId) {
+            $placed = false;
+            foreach ($planData as $day => &$dayMeals) {
+                foreach ($dayMeals as $mealIndex => $existingMeal) {
+                    $existingFoodIds = array_map(
+                        fn($component) => (int) ($component['food_id'] ?? 0),
+                        $existingMeal['components'] ?? []
+                    );
+                    if (!empty(array_intersect($existingFoodIds, $includedIds))) {
+                        continue;
+                    }
+
+                    $slot = $existingMeal['slot'] ?? 'lunch';
+                    $schedule = $planSchedule[$day][$slot] ?? null;
+                    if (!$schedule) {
+                        continue;
+                    }
+
+                    $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $schedule['profile']);
+                    $replacement = $builder->buildMealWithFood(
+                        $slot,
+                        (int) $schedule['target'],
+                        (int) $missingIncludeId,
+                        [],
+                        []
+                    );
+                    if ($replacement === null) {
+                        continue;
+                    }
+
+                    $dayMeals[$mealIndex] = $replacement;
+                    $placed = true;
+                    break 2;
+                }
+            }
+            unset($dayMeals);
+
+            if ($placed) {
+                $foodIdsInPlan[] = (int) $missingIncludeId;
+                $foodIdsInPlan = array_values(array_unique($foodIdsInPlan));
+            }
+        }
+
         // Save plan
         $startDate = date('Y-m-d', strtotime('this monday'));
         $endDate   = date('Y-m-d', strtotime('this sunday'));
@@ -193,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         ]);
 
         $generated = true;
+        $includedUsedIds = array_values(array_intersect($includedIds, $foodIdsInPlan));
         foreach ($currentInclusions as $food) {
             $name = ($GLOBALS['_kcals_lang'] === 'el') ? $food['name_el'] : $food['name_en'];
             if (in_array((int) $food['food_id'], $includedUsedIds, true)) {
