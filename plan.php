@@ -167,6 +167,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         $planSchedule = [];
         $usedFoodIds = []; // All food IDs used this week (for variety)
         $weeklyFamilyCounts = [];
+        $weeklyFoodCounts = [];
+        $weeklyTypeCounts = [];
+        $countedTypeFoods = [];
 
         foreach ($dayNames as $day) {
             $dayMeals   = [];
@@ -204,6 +207,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     $slotProfile['avoid_meal_families'] = $mainCookingFamilies;
                 }
                 $slotProfile['weekly_family_counts'] = $weeklyFamilyCounts;
+                $slotProfile['weekly_food_counts'] = $weeklyFoodCounts;
+                $slotProfile['weekly_type_counts'] = $weeklyTypeCounts;
                 $planSchedule[$day][$slot] = [
                     'target'  => $kcalTarget,
                     'profile' => $slotProfile,
@@ -264,6 +269,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     if ($c['food_id'] > 0) {
                         $usedFoodIds[] = $c['food_id'];
                         $dayFoodIds[]  = $c['food_id'];
+                        $componentFoodId = (int) $c['food_id'];
+                        $componentType = (string) ($c['food_type'] ?? '');
+                        $weeklyFoodCounts[$componentFoodId] = ($weeklyFoodCounts[$componentFoodId] ?? 0) + 1;
+                        if ($componentType !== '' && empty($countedTypeFoods[$componentType][$componentFoodId])) {
+                            $weeklyTypeCounts[$componentType] = ($weeklyTypeCounts[$componentType] ?? 0) + 1;
+                            $countedTypeFoods[$componentType][$componentFoodId] = true;
+                        }
                         if (in_array((int) $c['food_id'], $includedIds, true)) {
                             $dayHasIncludedFood = true;
                         }
