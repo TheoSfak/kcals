@@ -168,6 +168,11 @@ $googleConnection = googleSyncGetConnection($userId);
 $googleRedirectUri = googleSyncRedirectUri();
 $googleRestorePreview = $_SESSION['google_restore_preview'] ?? null;
 $googleRestoreCounts = $_SESSION['google_restore_counts'] ?? null;
+$googleCalendarReady = googleSyncHasCalendarScope($googleConnection);
+$googleCalendarReminderMode = (string) ($googleConnection['calendar_reminder_mode'] ?? 'previous_evening');
+if (!in_array($googleCalendarReminderMode, googleSyncCalendarReminderModes(), true)) {
+    $googleCalendarReminderMode = 'previous_evening';
+}
 unset($_SESSION['google_restore_counts']);
 
 $pageTitle = __('settings_title');
@@ -308,6 +313,8 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert-success"><?= __('google_sync_preview_ok') ?></div>
     <?php elseif ($googleStatus === 'restore_ok'): ?>
     <div class="alert-success"><?= __('google_sync_restore_ok') ?></div>
+    <?php elseif ($googleStatus === 'calendar_saved'): ?>
+    <div class="alert-success"><?= __('google_calendar_saved') ?></div>
     <?php elseif ($googleStatus === 'config'): ?>
     <div class="alert-error"><?= __('google_sync_config_missing') ?></div>
     <?php elseif ($googleStatus === 'not_connected'): ?>
@@ -385,6 +392,51 @@ require_once __DIR__ . '/includes/header.php';
                 <?= __('google_sync_last_backup') ?>: <?= htmlspecialchars(date('d/m/Y H:i', strtotime($googleConnection['last_sync_at']))) ?><br>
             <?php endif; ?>
             <?= __('google_sync_redirect_uri') ?>: <code><?= htmlspecialchars($googleRedirectUri) ?></code>
+        </div>
+        <div class="google-sync-meta" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;margin-top:1rem;">
+            <strong style="display:block;color:#1e293b;margin-bottom:.35rem;"><?= __('google_calendar_title') ?></strong>
+            <?php if ($googleConnection && $googleCalendarReady): ?>
+                <span class="google-sync-pill ok">
+                    <i data-lucide="calendar-check" style="width:14px;height:14px;"></i>
+                    <?= __('google_calendar_status_ready') ?>
+                </span>
+            <?php elseif ($googleConnection): ?>
+                <span class="google-sync-pill warn">
+                    <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
+                    <?= __('google_calendar_status_reconnect') ?>
+                </span>
+                <a href="<?= BASE_URL ?>/google_connect.php" class="btn btn-primary btn-sm" style="margin-left:.5rem;">
+                    <i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                    <?= __('google_calendar_reconnect') ?>
+                </a>
+            <?php else: ?>
+                <span class="google-sync-pill warn">
+                    <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
+                    <?= __('google_calendar_status_connect') ?>
+                </span>
+            <?php endif; ?>
+            <p style="font-size:.78rem;color:#64748b;margin:.7rem 0 0;">
+                <?= __('google_calendar_phase_note') ?>
+            </p>
+            <?php if ($googleConnection): ?>
+            <form method="POST" action="<?= BASE_URL ?>/google_calendar_settings.php" style="margin-top:.75rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                <label style="font-size:.78rem;font-weight:700;color:#374151;" for="calendar-reminder-mode">
+                    <?= __('google_calendar_reminder_label') ?>
+                </label>
+                <select id="calendar-reminder-mode" name="calendar_reminder_mode" class="form-control" style="max-width:220px;">
+                    <?php foreach (googleSyncCalendarReminderModes() as $mode): ?>
+                    <option value="<?= htmlspecialchars($mode) ?>" <?= $googleCalendarReminderMode === $mode ? 'selected' : '' ?>>
+                        <?= htmlspecialchars(__('google_calendar_reminder_' . $mode)) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="btn btn-outline btn-sm">
+                    <i data-lucide="save" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                    <?= __('google_calendar_save') ?>
+                </button>
+            </form>
+            <?php endif; ?>
         </div>
         <?php if ($googleConnection && is_array($googleRestorePreview)): ?>
         <div class="google-sync-meta" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;margin-top:1rem;">

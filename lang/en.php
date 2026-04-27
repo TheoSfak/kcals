@@ -509,6 +509,18 @@ return [
     'google_sync_last_backup'       => 'Last backup',
     'google_sync_phase_note'        => 'Phase 3 can back up, preview and restore your KCALS profile, progress, preferences and meal-plan history through private Google Drive app data. Calendar meal-prep sync comes next.',
     'google_sync_redirect_uri'      => 'Google OAuth redirect URI',
+    'google_calendar_title'             => 'Calendar meal-prep sync',
+    'google_calendar_status_ready'      => 'Calendar permission ready',
+    'google_calendar_status_reconnect'  => 'Reconnect required for Calendar',
+    'google_calendar_status_connect'    => 'Connect Google first',
+    'google_calendar_reconnect'         => 'Reconnect Google',
+    'google_calendar_phase_note'        => 'Phase 4A prepares Calendar permissions and reminder settings. No Calendar events are created until the next phase.',
+    'google_calendar_reminder_label'    => 'Reminder timing',
+    'google_calendar_reminder_previous_evening' => 'Previous evening',
+    'google_calendar_reminder_same_day'         => 'Same-day morning',
+    'google_calendar_reminder_none'             => 'No reminders',
+    'google_calendar_save'             => 'Save Calendar setting',
+    'google_calendar_saved'            => 'Calendar sync setting saved.',
 
     // ---- Hormetic Recharge Day (v0.9.5) ----
     'plan_recharge_notice'      => 'Hormetic Recharge Day ⚡',

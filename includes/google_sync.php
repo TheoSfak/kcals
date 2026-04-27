@@ -43,7 +43,37 @@ function googleSyncScopes(): array {
         'email',
         'profile',
         'https://www.googleapis.com/auth/drive.appdata',
+        googleSyncCalendarScope(),
     ];
+}
+
+function googleSyncCalendarScope(): string {
+    return 'https://www.googleapis.com/auth/calendar.events';
+}
+
+function googleSyncHasScope(?array $connection, string $scope): bool {
+    if (!$connection) return false;
+    $scopes = preg_split('/\s+/', trim((string) ($connection['scopes'] ?? ''))) ?: [];
+    return in_array($scope, $scopes, true);
+}
+
+function googleSyncHasCalendarScope(?array $connection): bool {
+    return googleSyncHasScope($connection, googleSyncCalendarScope());
+}
+
+function googleSyncCalendarReminderModes(): array {
+    return ['previous_evening', 'same_day', 'none'];
+}
+
+function googleSyncSaveCalendarSettings(int $userId, string $reminderMode): void {
+    if (!in_array($reminderMode, googleSyncCalendarReminderModes(), true)) {
+        $reminderMode = 'previous_evening';
+    }
+    getDB()->prepare('
+        UPDATE google_accounts
+        SET calendar_reminder_mode = ?, updated_at = NOW()
+        WHERE user_id = ?
+    ')->execute([$reminderMode, $userId]);
 }
 
 function googleSyncBuildAuthUrl(): string {

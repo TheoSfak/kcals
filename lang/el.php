@@ -510,6 +510,18 @@ return [
     'google_sync_last_backup'       => 'Τελευταίο backup',
     'google_sync_phase_note'        => 'Η φάση 3 μπορεί να κάνει backup, προεπισκόπηση και επαναφορά προφίλ, προόδου, προτιμήσεων και ιστορικού πλάνων μέσω ιδιωτικού Google Drive app data. Ο συγχρονισμός Calendar για meal prep έρχεται μετά.',
     'google_sync_redirect_uri'      => 'Google OAuth redirect URI',
+    'google_calendar_title'             => 'Συγχρονισμός meal-prep στο Calendar',
+    'google_calendar_status_ready'      => 'Η άδεια Calendar είναι έτοιμη',
+    'google_calendar_status_reconnect'  => 'Χρειάζεται επανασύνδεση για Calendar',
+    'google_calendar_status_connect'    => 'Συνδέστε πρώτα το Google',
+    'google_calendar_reconnect'         => 'Επανασύνδεση Google',
+    'google_calendar_phase_note'        => 'Η φάση 4A προετοιμάζει τις άδειες Calendar και τις ρυθμίσεις υπενθύμισης. Δεν δημιουργούνται events στο Calendar μέχρι την επόμενη φάση.',
+    'google_calendar_reminder_label'    => 'Χρόνος υπενθύμισης',
+    'google_calendar_reminder_previous_evening' => 'Προηγούμενο βράδυ',
+    'google_calendar_reminder_same_day'         => 'Το ίδιο πρωί',
+    'google_calendar_reminder_none'             => 'Χωρίς υπενθυμίσεις',
+    'google_calendar_save'             => 'Αποθήκευση ρύθμισης Calendar',
+    'google_calendar_saved'            => 'Η ρύθμιση Calendar αποθηκεύτηκε.',
 
     // ---- Hormetic Recharge Day (ημέρα αναφόρτισης v0.9.5) ----
     'plan_recharge_notice'      => 'Ημέρα Αναφόρτισης ⚡',
