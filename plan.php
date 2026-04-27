@@ -123,6 +123,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         // Smart food-based meal builder (instantiated per-day to allow per-day profile tweaks)
         require_once __DIR__ . '/engine/meal_builder.php';
 
+        $mainCookingFamilies = ['heavy_mixed', 'fish', 'shellfish', 'red_meat', 'pork', 'lamb', 'poultry'];
+        $mealHasMainCooking = function (array $meal) use ($mainCookingFamilies): bool {
+            foreach (($meal['components'] ?? []) as $component) {
+                $family = (string) ($component['meal_family'] ?? '');
+                $effort = (string) ($component['cooking_effort'] ?? '');
+                if ($effort === 'main_cooking' || in_array($family, $mainCookingFamilies, true)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         $dayNames    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
         $planData    = [];
         $planSchedule = [];
@@ -132,6 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
             $dayMeals   = [];
             $dayFoodIds = []; // Food IDs used in earlier slots today (avoid same protein lunch+dinner)
             $dayHasIncludedFood = false;
+            $dayHasMainCooking = false;
 
             // Social Buffer: adjust per-day target (−150 Mon–Fri, +750 Sat, unchanged Sun)
             $dayTarget = applySocialBuffer($targetCalories, $day);
@@ -149,17 +162,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
             ];
 
             foreach ($mealTargets as $slot => $kcalTarget) {
+                $slotProfile = $profile;
                 // Pass complex_carb_bias on the recharge day
                 if ($isDayRecharge) {
-                    $profile['complex_carb_bias'] = true;
+                    $slotProfile['complex_carb_bias'] = true;
                 } else {
-                    $profile['complex_carb_bias'] = false;
+                    $slotProfile['complex_carb_bias'] = false;
+                }
+
+                if ($slot === 'dinner' && $dayHasMainCooking) {
+                    $slotProfile['quick_main_only'] = true;
+                    $slotProfile['max_prep_minutes'] = 20;
+                    $slotProfile['avoid_meal_families'] = $mainCookingFamilies;
                 }
                 $planSchedule[$day][$slot] = [
                     'target'  => $kcalTarget,
-                    'profile' => $profile,
+                    'profile' => $slotProfile,
                 ];
-                $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
+                $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $slotProfile);
                 $meal = null;
                 if (!$dayHasIncludedFood) {
                     foreach ($remainingIncludeIds as $includeIndex => $includeId) {
@@ -176,6 +196,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                 }
                 if ($meal === null) {
                     $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                }
+                if (($slot === 'lunch' || $slot === 'dinner') && $mealHasMainCooking($meal)) {
+                    $dayHasMainCooking = true;
                 }
                 $dayMeals[] = $meal;
                 foreach ($meal['components'] as $c) {

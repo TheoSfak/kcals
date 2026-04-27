@@ -19,6 +19,9 @@ class MealBuilder
     private bool   $strengthDay; // true when last workout was strength training (further protein shift)
     private bool   $complexCarbBias; // true on Hormetic Recharge Day (v0.9.5): carb ratio raised to 55%
     private bool   $comfortFoodMode; // true in Recovery Mode (v0.9.6): picks dairy/carb comfort foods for snack
+    private ?int   $maxPrepMinutes;
+    private array  $avoidMealFamilies;
+    private bool   $quickMainOnly;
 
     /**
      * @param array $profile  Optional preference profile:
@@ -37,6 +40,12 @@ class MealBuilder
         $this->strengthDay     = (bool) ($profile['strength_day']      ?? false);
         $this->complexCarbBias = (bool) ($profile['complex_carb_bias'] ?? false);
         $this->comfortFoodMode = (bool) ($profile['comfort_food_mode'] ?? false);
+        $this->maxPrepMinutes = isset($profile['max_prep_minutes']) ? max(1, (int) $profile['max_prep_minutes']) : null;
+        $this->avoidMealFamilies = array_values(array_unique(array_map(
+            'strval',
+            (array) ($profile['avoid_meal_families'] ?? [])
+        )));
+        $this->quickMainOnly = (bool) ($profile['quick_main_only'] ?? false);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -106,6 +115,16 @@ class MealBuilder
 
         $components = [$forced];
         foreach ($baseMeal['components'] as $component) {
+            if (in_array($foodType, ['protein', 'dairy', 'mixed'], true)) {
+                $componentType = (string) ($component['food_type'] ?? '');
+                $componentEffort = (string) ($component['cooking_effort'] ?? '');
+                if ($foodType === 'mixed' && $componentType === 'carb') {
+                    continue;
+                }
+                if (in_array($componentType, ['protein', 'dairy', 'mixed'], true) || $componentEffort === 'main_cooking') {
+                    continue;
+                }
+            }
             if ((int) ($component['food_id'] ?? 0) !== $foodId) {
                 $components[] = $component;
             }
@@ -205,9 +224,10 @@ class MealBuilder
         $isKeto = $this->diet === 'keto';
 
         // Protein: try to differ from today's meals; fall back wider if needed
-        $protein = $this->pick('protein', $slot, array_merge($usedWeek, $usedToday));
-        if (!$protein) $protein = $this->pick('protein', $slot, $usedToday);
-        if (!$protein) $protein = $this->pick('protein', $slot, []);
+        $mainTypeExpr = $this->quickMainOnly ? 'protein|dairy' : 'protein';
+        $protein = $this->pick($mainTypeExpr, $slot, array_merge($usedWeek, $usedToday));
+        if (!$protein) $protein = $this->pick($mainTypeExpr, $slot, $usedToday);
+        if (!$protein) $protein = $this->pick($mainTypeExpr, $slot, []);
 
         // Carb (skip for keto)
         $excl = $usedWeek;
@@ -359,14 +379,14 @@ class MealBuilder
                    AND available_months LIKE ?
                    AND meal_slots      LIKE ?
                    $dietFilter $cuisineSQL $allergenSQL $excludeSQL
-                 ORDER BY RAND() LIMIT 6";
+                 ORDER BY RAND() LIMIT 24";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         // Return first non-disliked food
         foreach ($rows as $food) {
-            if (!$this->isDisliked($food)) return $food;
+            if (!$this->isDisliked($food) && $this->foodAllowedForPlanner($food)) return $food;
         }
 
         // Relax variety constraint and retry once (keep allergen + cuisine filters)
@@ -405,14 +425,18 @@ class MealBuilder
 
         $slots = array_map('trim', explode(',', (string) ($food['meal_slots'] ?? '')));
         if ($this->isSubstantialPreparedMain($food)) {
-            return $slot === 'lunch' && (in_array('lunch', $slots, true) || in_array('dinner', $slots, true));
-        }
-
-        if (!in_array($slot, $slots, true)) {
+            if ($slot !== 'lunch' || (!in_array('lunch', $slots, true) && !in_array('dinner', $slots, true))) {
+                return false;
+            }
+        } elseif (!in_array($slot, $slots, true)) {
             return false;
         }
 
         if (!$this->foodMatchesDiet($food)) {
+            return false;
+        }
+
+        if (!$this->foodAllowedForPlanner($food)) {
             return false;
         }
 
@@ -424,6 +448,20 @@ class MealBuilder
         }
 
         return !$this->isDisliked($food);
+    }
+
+    private function foodAllowedForPlanner(array $food): bool
+    {
+        $family = $this->mealFamily($food);
+        if (in_array($family, $this->avoidMealFamilies, true)) {
+            return false;
+        }
+
+        if ($this->maxPrepMinutes !== null && (int) ($food['prep_minutes'] ?? 0) > $this->maxPrepMinutes) {
+            return false;
+        }
+
+        return true;
     }
 
     private function isSubstantialPreparedMain(array $food): bool
@@ -439,6 +477,61 @@ class MealBuilder
 
         return (int) ($food['prep_minutes'] ?? 0) >= 35
             && (float) ($food['cal_per_100g'] ?? 0) >= 140;
+    }
+
+    private function mealFamily(array $food): string
+    {
+        $name = mb_strtolower(($food['name_en'] ?? '') . ' ' . ($food['name_el'] ?? ''));
+        $allergens = mb_strtolower((string) ($food['allergen_tags'] ?? ''));
+        $type = (string) ($food['food_type'] ?? '');
+
+        if ($this->isSubstantialPreparedMain($food)) {
+            return 'heavy_mixed';
+        }
+        if (str_contains($allergens, 'shellfish') || preg_match('/shrimp|clam|mussel|squid|octopus|prawn|lobster|crab/u', $name)) {
+            return 'shellfish';
+        }
+        if (preg_match('/salmon|swordfish|cod|bass|bream|tilapia|trout|herring|mackerel|halibut|tuna|sardine|anchov/u', $name)) {
+            return 'fish';
+        }
+        if (preg_match('/beef|veal|ribeye|sirloin|tenderloin|bolognese/u', $name)) {
+            return 'red_meat';
+        }
+        if (preg_match('/pork|bacon|ham/u', $name)) {
+            return 'pork';
+        }
+        if (preg_match('/lamb|mutton/u', $name)) {
+            return 'lamb';
+        }
+        if (preg_match('/chicken|turkey|duck|quail/u', $name)) {
+            return 'poultry';
+        }
+        if (preg_match('/egg|omelet|frittata/u', $name)) {
+            return 'eggs';
+        }
+        if ($type === 'dairy' || str_contains($allergens, 'dairy')) {
+            return 'dairy';
+        }
+        if (preg_match('/lentil|bean|chickpea|pea|fava|edamame|soybean|falafel|dal/u', $name)) {
+            return 'legume';
+        }
+        if (preg_match('/tofu|tempeh|seitan/u', $name)) {
+            return 'plant_protein';
+        }
+
+        return $type ?: 'other';
+    }
+
+    private function cookingEffort(array $food): string
+    {
+        $family = $this->mealFamily($food);
+        if (in_array($family, ['heavy_mixed', 'fish', 'shellfish', 'red_meat', 'pork', 'lamb', 'poultry'], true)) {
+            return 'main_cooking';
+        }
+        if ((int) ($food['prep_minutes'] ?? 0) >= 25) {
+            return 'cooked';
+        }
+        return 'quick';
     }
 
     private function foodMatchesDiet(array $food): bool
@@ -491,6 +584,8 @@ class MealBuilder
             'fat_g'        => (int)   round((float) $food['fat_per_100g']     * $f),
             'prep_minutes' => (int)  ($food['prep_minutes'] ?? 5),
             'food_type'    =>         $food['food_type'],
+            'meal_family'  =>         $this->mealFamily($food),
+            'cooking_effort' =>       $this->cookingEffort($food),
         ];
     }
 
@@ -507,6 +602,8 @@ class MealBuilder
             'fat_g'        => 9,
             'prep_minutes' => 0,
             'food_type'    => 'fat',
+            'meal_family'  => 'fat',
+            'cooking_effort' => 'quick',
         ];
     }
 
@@ -644,6 +741,10 @@ class MealBuilder
         );
         $stmt->execute(['%' . $slot . '%']);
         $foods = $stmt->fetchAll();
+        $foods = array_values(array_filter(
+            $foods,
+            fn($food) => $this->foodAllowedForPlanner($food) && !$this->isDisliked($food)
+        ));
         if (empty($foods)) return [];
         $per = $target / count($foods);
         return array_map(fn($f) => $this->calc($f, $per), $foods);
