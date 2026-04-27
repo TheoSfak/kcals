@@ -647,6 +647,9 @@ select.form-control { cursor: pointer; }
 .plan-history-item.is-current {
     background: #f0fdf4;
 }
+.plan-history-item.is-previewed {
+    background: #eff6ff;
+}
 .plan-history-main {
     min-width: 0;
 }
@@ -665,6 +668,10 @@ select.form-control { cursor: pointer; }
     font-size: 0.64rem;
     font-weight: 800;
     padding: 0.08rem 0.42rem;
+}
+.plan-history-title span.is-preview {
+    background: #dbeafe;
+    color: #1d4ed8;
 }
 .plan-history-meta,
 .plan-history-quality {
@@ -685,9 +692,37 @@ select.form-control { cursor: pointer; }
     color: var(--slate-light);
     font-weight: 600;
 }
+.plan-history-actions,
+.plan-preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 .plan-history-restore {
     flex-shrink: 0;
     margin: 0;
+}
+.plan-preview-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #93c5fd;
+    border-radius: var(--radius);
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+.plan-preview-banner strong {
+    display: block;
+    font-size: 0.92rem;
+}
+.plan-preview-banner span {
+    color: #1d4ed8;
+    font-size: 0.76rem;
+    font-weight: 700;
 }
 
 .meal-list { padding: 0.75rem; }
@@ -1056,7 +1091,8 @@ footer {
     .day-card-header { align-items: flex-start; }
     .day-card-actions { flex-wrap: wrap; justify-content: flex-end; }
     .plan-history-header,
-    .plan-history-item {
+    .plan-history-item,
+    .plan-preview-banner {
         align-items: flex-start;
         flex-direction: column;
     }

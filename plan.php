@@ -1328,6 +1328,27 @@ $historyStmt = $db->prepare('
 $historyStmt->execute([$userId]);
 $planHistory = $historyStmt->fetchAll();
 
+$previewPlan = null;
+$previewPlanData = null;
+$viewPlan = $plan;
+$viewPlanData = $planData;
+$isHistoryPreview = false;
+$previewPlanId = (int) ($_GET['preview_plan_id'] ?? 0);
+if ($previewPlanId > 0) {
+    $previewStmt = $db->prepare('SELECT * FROM weekly_plans WHERE id = ? AND user_id = ? LIMIT 1');
+    $previewStmt->execute([$previewPlanId, $userId]);
+    $previewPlan = $previewStmt->fetch();
+    $previewPlanData = $previewPlan ? json_decode($previewPlan['plan_data_json'], true) : null;
+
+    if (!$previewPlan || !is_array($previewPlanData)) {
+        $genError = __('plan_history_preview_error');
+    } else {
+        $viewPlan = $previewPlan;
+        $viewPlanData = $previewPlanData;
+        $isHistoryPreview = !$plan || (int) $previewPlan['id'] !== (int) $plan['id'];
+    }
+}
+
 $pageTitle = __('plan_title');
 $activeNav = 'plan';
 require_once __DIR__ . '/includes/header.php';
@@ -1450,6 +1471,31 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert alert-error" style="margin-bottom:1.5rem;"><?= htmlspecialchars($genError) ?></div>
     <?php endif; ?>
 
+    <?php if ($isHistoryPreview && $viewPlan): ?>
+    <div class="plan-preview-banner no-print">
+        <div>
+            <strong><?= __('plan_history_previewing') ?></strong>
+            <span><?= htmlspecialchars(date('d/m/Y H:i', strtotime($viewPlan['created_at']))) ?></span>
+        </div>
+        <div class="plan-preview-actions">
+            <a href="<?= BASE_URL ?>/plan.php" class="btn btn-outline btn-sm">
+                <i data-lucide="arrow-left" style="width:13px;height:13px;"></i>
+                <?= __('plan_history_back_current') ?>
+            </a>
+            <form method="POST" action="<?= BASE_URL ?>/plan.php" class="plan-history-restore">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                <input type="hidden" name="action" value="restore_plan">
+                <input type="hidden" name="restore_plan_id" value="<?= (int) $viewPlan['id'] ?>">
+                <button type="submit" class="btn btn-primary btn-sm"
+                        onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_history_restore_confirm')), ENT_QUOTES) ?>)">
+                    <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
+                    <?= __('plan_history_restore_btn') ?>
+                </button>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <?php if ($isPlateau): ?>
     <div class="alert" style="background:#fff3cd; border:1px solid #ffc107; color:#856404; margin-bottom:1.5rem;">
         <strong><?= __('plan_plateau_title') ?></strong><br>
@@ -1489,28 +1535,28 @@ require_once __DIR__ . '/includes/header.php';
     </div>
     <?php endif; ?>
 
-    <?php if ($planData): ?>
+    <?php if ($viewPlanData): ?>
 
     <!-- Plan metadata -->
-    <?php if ($plan): ?>
+    <?php if ($viewPlan): ?>
     <div class="no-print" style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
-            <div style="font-size:1.4rem; font-weight:800; color:var(--green-dark);"><?= $plan['target_calories'] ?></div>
+            <div style="font-size:1.4rem; font-weight:800; color:var(--green-dark);"><?= $viewPlan['target_calories'] ?></div>
             <div class="text-small text-muted"><?= __('plan_kcal_target') ?></div>
         </div>
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
-            <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $plan['start_date'] ?></div>
+            <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $viewPlan['start_date'] ?></div>
             <div class="text-small text-muted"><?= __('plan_week_start') ?></div>
         </div>
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
-            <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $plan['end_date'] ?></div>
+            <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $viewPlan['end_date'] ?></div>
             <div class="text-small text-muted"><?= __('plan_week_end') ?></div>
         </div>
         <div class="card" style="flex:1; min-width:140px; padding:1rem; text-align:center;">
             <?php
                 $totalPlanKcal = 0;
-                foreach ($planData as $dayMeals) $totalPlanKcal += array_sum(array_column($dayMeals, 'calories'));
-                $avgKcal = count($planData) > 0 ? round($totalPlanKcal / count($planData)) : 0;
+                foreach ($viewPlanData as $dayMeals) $totalPlanKcal += array_sum(array_column($dayMeals, 'calories'));
+                $avgKcal = count($viewPlanData) > 0 ? round($totalPlanKcal / count($viewPlanData)) : 0;
             ?>
             <div style="font-size:1.4rem; font-weight:800; color:var(--slate);"><?= $avgKcal ?></div>
             <div class="text-small text-muted"><?= __('plan_avg_kcal') ?></div>
@@ -1533,6 +1579,7 @@ require_once __DIR__ . '/includes/header.php';
                 $historyData = json_decode($historyPlan['plan_data_json'], true);
                 $historySummary = kcalsPlanHistorySummary($historyData, $mainCookingFamilies);
                 $isCurrentHistoryPlan = $plan && (int) $historyPlan['id'] === (int) $plan['id'];
+                $isPreviewHistoryPlan = $isHistoryPreview && $viewPlan && (int) $historyPlan['id'] === (int) $viewPlan['id'];
                 $qualitySummaryParts = [];
                 foreach (['easy', 'balanced', 'watch', 'heavy'] as $qualityStatus) {
                     $count = (int) ($historySummary['quality_counts'][$qualityStatus] ?? 0);
@@ -1541,12 +1588,15 @@ require_once __DIR__ . '/includes/header.php';
                     }
                 }
             ?>
-            <div class="plan-history-item<?= $isCurrentHistoryPlan ? ' is-current' : '' ?>">
+            <div class="plan-history-item<?= $isCurrentHistoryPlan ? ' is-current' : '' ?><?= $isPreviewHistoryPlan ? ' is-previewed' : '' ?>">
                 <div class="plan-history-main">
                     <div class="plan-history-title">
                         <strong><?= htmlspecialchars(date('d/m/Y H:i', strtotime($historyPlan['created_at']))) ?></strong>
                         <?php if ($isCurrentHistoryPlan): ?>
                         <span><?= __('plan_history_current') ?></span>
+                        <?php endif; ?>
+                        <?php if ($isPreviewHistoryPlan): ?>
+                        <span class="is-preview"><?= __('plan_history_preview_badge') ?></span>
                         <?php endif; ?>
                     </div>
                     <div class="plan-history-meta">
@@ -1562,16 +1612,22 @@ require_once __DIR__ . '/includes/header.php';
                     <?php endif; ?>
                 </div>
                 <?php if (!$isCurrentHistoryPlan): ?>
-                <form method="POST" action="<?= BASE_URL ?>/plan.php" class="plan-history-restore">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <input type="hidden" name="action" value="restore_plan">
-                    <input type="hidden" name="restore_plan_id" value="<?= (int) $historyPlan['id'] ?>">
-                    <button type="submit" class="btn btn-outline btn-sm"
-                            onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_history_restore_confirm')), ENT_QUOTES) ?>)">
-                        <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
-                        <?= __('plan_history_restore_btn') ?>
-                    </button>
-                </form>
+                <div class="plan-history-actions">
+                    <a href="<?= BASE_URL ?>/plan.php?preview_plan_id=<?= (int) $historyPlan['id'] ?>#plan-preview" class="btn btn-outline btn-sm">
+                        <i data-lucide="eye" style="width:13px;height:13px;"></i>
+                        <?= __('plan_history_preview_btn') ?>
+                    </a>
+                    <form method="POST" action="<?= BASE_URL ?>/plan.php" class="plan-history-restore">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                        <input type="hidden" name="action" value="restore_plan">
+                        <input type="hidden" name="restore_plan_id" value="<?= (int) $historyPlan['id'] ?>">
+                        <button type="submit" class="btn btn-outline btn-sm"
+                                onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_history_restore_confirm')), ENT_QUOTES) ?>)">
+                            <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
+                            <?= __('plan_history_restore_btn') ?>
+                        </button>
+                    </form>
+                </div>
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
@@ -1581,8 +1637,8 @@ require_once __DIR__ . '/includes/header.php';
 
     <!-- 7-Day Grid -->
     <div class="no-print">
-    <div class="plan-grid">
-        <?php foreach ($planData as $dayName => $meals): ?>
+    <div class="plan-grid" id="plan-preview">
+        <?php foreach ($viewPlanData as $dayName => $meals): ?>
         <?php
             $dayTotal = array_sum(array_column($meals, 'calories'));
             $isDayRechargeView = isRechargeDay($dayName, $rechargeDay);
@@ -1599,7 +1655,7 @@ require_once __DIR__ . '/includes/header.php';
                     <?php endif; ?>
                 </div>
                 <div class="day-card-actions no-print">
-                    <?php if ($plan): ?>
+                    <?php if ($plan && !$isHistoryPreview): ?>
                     <form method="POST" action="<?= BASE_URL ?>/plan.php" class="day-regenerate-form">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
                         <input type="hidden" name="action" value="regenerate_day">
@@ -1668,7 +1724,7 @@ require_once __DIR__ . '/includes/header.php';
                             <?php foreach ($meal['components'] as $ci => $c): ?><?php if ($c['food_id'] > 0): ?><?php if ($ci > 0): ?><span class="ing-sep">&bull;</span><?php endif; ?><span class="ing-item"><?= htmlspecialchars(($GLOBALS['_kcals_lang']==='el') ? $c['name_el'] : $c['name_en']) ?> <strong><?= $c['grams'] ?>g</strong></span><?php endif; ?><?php endforeach; ?>
                         </div>
                         <?php endif; ?>
-                        <?php if ($plan): ?>
+                        <?php if ($plan && !$isHistoryPreview): ?>
                         <div class="meal-actions no-print">
                         <form method="POST" action="<?= BASE_URL ?>/plan.php" class="meal-lock-form">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
@@ -1787,15 +1843,15 @@ require_once __DIR__ . '/includes/header.php';
 
 </div><!-- /no-print outer wrapper -->
 
-<?php if ($planData): ?>
+<?php if ($viewPlanData): ?>
 <!-- ======== PRINT TABLE (hidden on screen, visible only on print) ======== -->
 <div class="print-only" style="padding:0;margin:0;">
     <div class="print-header">
         <strong>KCALS</strong> &mdash; <?= __('plan_h1') ?>
-        <?php if ($plan): ?>
-        &nbsp;&bull;&nbsp; <?= __('plan_week_start') ?>: <?= $plan['start_date'] ?>
-        &nbsp;&bull;&nbsp; <?= __('plan_week_end') ?>: <?= $plan['end_date'] ?>
-        &nbsp;&bull;&nbsp; <?= __('plan_kcal_target') ?>: <?= $plan['target_calories'] ?> kcal
+        <?php if ($viewPlan): ?>
+        &nbsp;&bull;&nbsp; <?= __('plan_week_start') ?>: <?= $viewPlan['start_date'] ?>
+        &nbsp;&bull;&nbsp; <?= __('plan_week_end') ?>: <?= $viewPlan['end_date'] ?>
+        &nbsp;&bull;&nbsp; <?= __('plan_kcal_target') ?>: <?= $viewPlan['target_calories'] ?> kcal
         <?php endif; ?>
     </div>
     <table class="print-table">
@@ -1810,7 +1866,7 @@ require_once __DIR__ . '/includes/header.php';
             </tr>
         </thead>
         <tbody>
-        <?php foreach ($planData as $dayName => $dayMeals):
+        <?php foreach ($viewPlanData as $dayName => $dayMeals):
             $slotMap = [];
             foreach ($dayMeals as $m) {
                 $s = $m['slot'] ?? $m['category'] ?? 'lunch';
