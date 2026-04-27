@@ -67,36 +67,51 @@ class MealBuilder
             default     => [],
         };
 
-        // Aggregate totals
-        $totalCal = $totalP = $totalC = $totalF = 0;
-        foreach ($components as $c) {
-            $totalCal += $c['cal'];
-            $totalP   += $c['protein_g'];
-            $totalC   += $c['carbs_g'];
-            $totalF   += $c['fat_g'];
+        return $this->assembleMeal($slot, $components);
+    }
+
+    /**
+     * Build a meal around a specific user-requested food.
+     * Returns null when the food is incompatible with this slot/profile.
+     */
+    public function buildMealWithFood(
+        string $slot,
+        int $targetKcal,
+        int $foodId,
+        array $usedWeek  = [],
+        array $usedToday = []
+    ): ?array {
+        $food = $this->findFoodByIdForSlot($foodId, $slot);
+        if (!$food) {
+            return null;
         }
 
-        [$nameEl, $nameEn] = $this->buildName($slot, $components);
+        $foodType = $food['food_type'] ?? '';
+        $share = match ($foodType) {
+            'protein' => ($slot === 'breakfast' || $slot === 'snack') ? 0.42 : 0.48,
+            'carb'    => ($slot === 'snack') ? 0.45 : 0.38,
+            'dairy'   => 0.42,
+            'fruit'   => 0.32,
+            'fat'     => 0.18,
+            'vegetable'=> 0.16,
+            default   => 0.35,
+        };
 
-        $prep = 5;
-        if (!empty($components)) {
-            $prep = max(array_column($components, 'prep_minutes'));
-        }
-        if ($slot === 'lunch' || $slot === 'dinner') {
-            $prep = max($prep, 15);
+        $forced = $this->calc($food, $targetKcal * $share);
+        $excludeForced = array_merge($usedWeek, $usedToday, [$foodId]);
+        $baseTarget = max(120, $targetKcal - (int) $forced['cal']);
+        $baseMeal = $this->buildMeal($slot, $baseTarget, $excludeForced, $excludeForced);
+
+        $components = [$forced];
+        foreach ($baseMeal['components'] as $component) {
+            if ((int) ($component['food_id'] ?? 0) !== $foodId) {
+                $components[] = $component;
+            }
         }
 
-        return [
-            'slot'         => $slot,
-            'name_el'      => $nameEl,
-            'name_en'      => $nameEn,
-            'calories'     => (int) round($totalCal),
-            'protein_g'    => (int) round($totalP),
-            'carbs_g'      => (int) round($totalC),
-            'fat_g'        => (int) round($totalF),
-            'prep_minutes' => (int) $prep,
-            'components'   => $components,
-        ];
+        $meal = $this->assembleMeal($slot, $components);
+        $meal['included_food_id'] = $foodId;
+        return $meal;
     }
 
     // ──────────────────────────────────────────────────────────
@@ -359,12 +374,71 @@ class MealBuilder
         return null;
     }
 
+    private function findFoodByIdForSlot(int $foodId, string $slot): ?array
+    {
+        if ($foodId <= 0 || in_array($foodId, $this->excluded, true)) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare('SELECT * FROM foods WHERE id = ? LIMIT 1');
+        $stmt->execute([$foodId]);
+        $food = $stmt->fetch();
+        if (!$food) {
+            return null;
+        }
+
+        if (!$this->foodMatchesProfile($food, $slot)) {
+            return null;
+        }
+
+        return $food;
+    }
+
+    private function foodMatchesProfile(array $food, string $slot): bool
+    {
+        $monthList = array_map('intval', array_filter(explode(',', (string) ($food['available_months'] ?? ''))));
+        if (!in_array($this->month, $monthList, true)) {
+            return false;
+        }
+
+        $slots = array_map('trim', explode(',', (string) ($food['meal_slots'] ?? '')));
+        if (!in_array($slot, $slots, true)) {
+            return false;
+        }
+
+        if (!$this->foodMatchesDiet($food)) {
+            return false;
+        }
+
+        $allergenTags = array_map('trim', explode(',', strtolower((string) ($food['allergen_tags'] ?? ''))));
+        foreach ($this->allergies as $allergen) {
+            if (in_array(strtolower((string) $allergen), $allergenTags, true)) {
+                return false;
+            }
+        }
+
+        return !$this->isDisliked($food);
+    }
+
+    private function foodMatchesDiet(array $food): bool
+    {
+        return match ($this->diet) {
+            'vegan'      => !empty($food['is_vegan']),
+            'vegetarian' => !empty($food['is_vegetarian']),
+            'gf', 'gluten_free' => !empty($food['is_gluten_free']),
+            'vegan_gf'   => !empty($food['is_vegan']) && !empty($food['is_gluten_free']),
+            'keto'       => !empty($food['is_keto_ok']),
+            'paleo'      => !empty($food['is_paleo_ok']),
+            default      => true,
+        };
+    }
+
     private function dietFilter(): string
     {
         return match ($this->diet) {
             'vegan'      => ' AND is_vegan = 1',
             'vegetarian' => ' AND is_vegetarian = 1',
-            'gf'         => ' AND is_gluten_free = 1',
+            'gf', 'gluten_free' => ' AND is_gluten_free = 1',
             'vegan_gf'   => ' AND is_vegan = 1 AND is_gluten_free = 1',
             'keto'       => ' AND is_keto_ok = 1',
             'paleo'      => ' AND is_paleo_ok = 1',
@@ -476,6 +550,39 @@ class MealBuilder
         }
 
         return [$nameEl ?? 'Γεύμα', $nameEn ?? 'Meal'];
+    }
+
+    private function assembleMeal(string $slot, array $components): array
+    {
+        $totalCal = $totalP = $totalC = $totalF = 0;
+        foreach ($components as $c) {
+            $totalCal += $c['cal'];
+            $totalP   += $c['protein_g'];
+            $totalC   += $c['carbs_g'];
+            $totalF   += $c['fat_g'];
+        }
+
+        [$nameEl, $nameEn] = $this->buildName($slot, $components);
+
+        $prep = 5;
+        if (!empty($components)) {
+            $prep = max(array_column($components, 'prep_minutes'));
+        }
+        if ($slot === 'lunch' || $slot === 'dinner') {
+            $prep = max($prep, 15);
+        }
+
+        return [
+            'slot'         => $slot,
+            'name_el'      => $nameEl,
+            'name_en'      => $nameEn,
+            'calories'     => (int) round($totalCal),
+            'protein_g'    => (int) round($totalP),
+            'carbs_g'      => (int) round($totalC),
+            'fat_g'        => (int) round($totalF),
+            'prep_minutes' => (int) $prep,
+            'components'   => $components,
+        ];
     }
 
     // ──────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ if (empty($user['interview_done'])) {
 $latestProgress = getLatestProgress($userId);
 
 if (!$latestProgress) {
-    header('Location: /dashboard.php');
+    header('Location: ' . BASE_URL . '/dashboard.php');
     exit;
 }
 
@@ -49,12 +49,26 @@ if ($workoutBoost) {
     $burnedKcal = $latestWorkoutMinutes * $burnRate;
 }
 
+// Foods the user wants KCALS to include when possible
+$inclStmt = $db->prepare('
+    SELECT ufi.food_id, f.name_en, f.name_el
+    FROM user_food_inclusions ufi
+    JOIN foods f ON f.id = ufi.food_id
+    WHERE ufi.user_id = ?
+    ORDER BY f.name_en
+');
+$inclStmt->execute([$userId]);
+$currentInclusions = $inclStmt->fetchAll();
+$includedIds = array_map('intval', array_column($currentInclusions, 'food_id'));
+
 // ---- Generate / Regenerate Plan ----
 $generated = false;
 $genError  = '';
+$includedUsedNames = [];
+$includedSkippedNames = [];
 
-if (isset($_GET['generate']) && $_GET['generate'] == '1') {
-    if (!verifyCsrf($_GET['csrf'] ?? '')) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate_plan') {
+    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $genError = __('err_plan_invalid');
     } else {
         $currentMonth   = (int) date('n');
@@ -93,7 +107,9 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         }
         $exclStmt = $db->prepare('SELECT food_id FROM user_food_exclusions WHERE user_id = ?');
         $exclStmt->execute([$userId]);
-        $excludedIds = array_column($exclStmt->fetchAll(), 'food_id');
+        $excludedIds = array_map('intval', array_column($exclStmt->fetchAll(), 'food_id'));
+        $remainingIncludeIds = array_values(array_diff($includedIds, $excludedIds));
+        $includedUsedIds = [];
 
         $profile = [
             'adventure'    => (int) ($user['food_adventure'] ?? 2),
@@ -138,7 +154,20 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
                     $profile['complex_carb_bias'] = false;
                 }
                 $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
-                $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                $meal = null;
+                foreach ($remainingIncludeIds as $includeIndex => $includeId) {
+                    $candidateMeal = $builder->buildMealWithFood($slot, $kcalTarget, (int) $includeId, $usedFoodIds, $dayFoodIds);
+                    if ($candidateMeal !== null) {
+                        $meal = $candidateMeal;
+                        $includedUsedIds[] = (int) $includeId;
+                        unset($remainingIncludeIds[$includeIndex]);
+                        $remainingIncludeIds = array_values($remainingIncludeIds);
+                        break;
+                    }
+                }
+                if ($meal === null) {
+                    $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                }
                 $dayMeals[] = $meal;
                 foreach ($meal['components'] as $c) {
                     if ($c['food_id'] > 0) {
@@ -164,6 +193,14 @@ if (isset($_GET['generate']) && $_GET['generate'] == '1') {
         ]);
 
         $generated = true;
+        foreach ($currentInclusions as $food) {
+            $name = ($GLOBALS['_kcals_lang'] === 'el') ? $food['name_el'] : $food['name_en'];
+            if (in_array((int) $food['food_id'], $includedUsedIds, true)) {
+                $includedUsedNames[] = $name;
+            } else {
+                $includedSkippedNames[] = $name;
+            }
+        }
     }
 }
 
@@ -180,8 +217,6 @@ $planData = $plan ? json_decode($plan['plan_data_json'], true) : null;
 $pageTitle = __('plan_title');
 $activeNav = 'plan';
 require_once __DIR__ . '/includes/header.php';
-
-$generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
 ?>
 
 <div class="no-print" style="max-width:1100px; margin:2rem auto; padding:0 1.25rem;">
@@ -196,10 +231,17 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
             </p>
         </div>
         <div class="no-print" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">
-            <a href="<?= htmlspecialchars($generateUrl) ?>" class="btn btn-primary">
+            <form method="POST" action="<?= BASE_URL ?>/plan.php" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                <input type="hidden" name="action" value="generate_plan">
+                <button type="submit" class="btn btn-primary"
+                        <?php if (!empty($currentInclusions)): ?>
+                        onclick="return confirm('Generate a new plan and try to include your saved must-include foods?')"
+                        <?php endif; ?>>
                 <i data-lucide="wand-2" style="width:15px;height:15px;"></i>
                 <?= $plan ? __('plan_regen') : __('plan_gen') ?>
-            </a>
+                </button>
+            </form>
             <?php if ($plan): ?>
             <a href="<?= BASE_URL ?>/shopping.php" class="btn btn-outline">
                 <i data-lucide="shopping-cart" style="width:15px;height:15px;"></i>
@@ -216,10 +258,37 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
         </div>
     </div>
 
+    <div class="alert" style="background:#f0fdf4; border:1px solid #86efac; color:#14532d; margin-bottom:1rem;">
+        <strong>✅ Must-include foods:</strong>
+        <?php if (!empty($currentInclusions)): ?>
+            <?php
+            $includeNames = array_map(
+                fn($f) => htmlspecialchars(($GLOBALS['_kcals_lang'] === 'el') ? $f['name_el'] : $f['name_en']),
+                $currentInclusions
+            );
+            ?>
+            <?= implode(', ', $includeNames) ?>
+        <?php else: ?>
+            none selected yet
+        <?php endif; ?>
+        <a href="<?= BASE_URL ?>/settings.php" style="color:#166534;font-weight:700;margin-left:.5rem;">Manage</a>
+    </div>
+
     <?php if ($generated): ?>
     <div class="alert alert-success" style="margin-bottom:1.5rem;">
         <strong><?= __('plan_generated') ?></strong> <?= __('plan_generated_desc') ?>
     </div>
+    <?php if (!empty($includedUsedNames)): ?>
+    <div class="alert" style="background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46; margin-bottom:1rem;">
+        <strong>Included by request:</strong> <?= htmlspecialchars(implode(', ', $includedUsedNames)) ?>
+    </div>
+    <?php endif; ?>
+    <?php if (!empty($includedSkippedNames)): ?>
+    <div class="alert" style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; margin-bottom:1rem;">
+        <strong>Could not include this time:</strong> <?= htmlspecialchars(implode(', ', $includedSkippedNames)) ?>.
+        Check diet, allergy, excluded-food, season, or meal-slot compatibility.
+    </div>
+    <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($genError): ?>
@@ -360,10 +429,17 @@ $generateUrl = BASE_URL . '/plan.php?generate=1&csrf=' . urlencode(csrfToken());
         <i data-lucide="calendar-x" style="width:56px;height:56px; color:var(--slate-light); display:block; margin:0 auto 1rem;"></i>
         <h2 style="margin-bottom:.5rem;"><?= __('plan_no_plan') ?></h2>
         <p style="max-width:400px; margin:0 auto 1.5rem;"><?= __('plan_no_plan_desc') ?></p>
-        <a href="<?= htmlspecialchars($generateUrl) ?>" class="btn btn-primary btn-lg">
+        <form method="POST" action="<?= BASE_URL ?>/plan.php" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+            <input type="hidden" name="action" value="generate_plan">
+            <button type="submit" class="btn btn-primary btn-lg"
+                    <?php if (!empty($currentInclusions)): ?>
+                    onclick="return confirm('Generate a new plan and try to include your saved must-include foods?')"
+                    <?php endif; ?>>
             <i data-lucide="wand-2" style="width:18px;height:18px;"></i>
             <?= __('plan_gen_my') ?>
-        </a>
+            </button>
+        </form>
     </div>
     <?php endif; ?>
 

@@ -16,6 +16,7 @@ desktop.ini
 # Logs & temp
 *.log
 /tmp/
+kcals_backup_before_*.sql
 
 # Productive-site snapshot / deploy artefacts (not part of the repo)
 productive-site/

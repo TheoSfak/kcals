@@ -35,6 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 fn($id) => $id > 0
             )
         );
+        $rawIncludeIds = $_POST['included_ids'] ?? '';
+        $included = array_values(array_diff(array_unique(
+            array_filter(
+                array_map('intval', array_filter(explode(',', $rawIncludeIds))),
+                fn($id) => $id > 0
+            )
+        ), $excluded));
 
         try {
             $setAllergy = implode(', ', array_map(fn($k) => "`$k` = ?", array_keys($allergyVals)));
@@ -46,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute(array_merge([$adventure, $rechargeDay], array_values($allergyVals), [$userId]));
 
             $db->prepare('DELETE FROM `user_food_exclusions` WHERE `user_id` = ?')->execute([$userId]);
+            $db->prepare('DELETE FROM `user_food_inclusions` WHERE `user_id` = ?')->execute([$userId]);
 
             if (!empty($excluded)) {
                 $ph   = implode(',', array_fill(0, count($excluded), '?'));
@@ -61,6 +69,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insParams[] = (int) $fid;
                     }
                     $db->prepare("INSERT IGNORE INTO `user_food_exclusions` (`user_id`,`food_id`) VALUES $insVals")
+                       ->execute($insParams);
+                }
+            }
+
+            if (!empty($included)) {
+                $ph   = implode(',', array_fill(0, count($included), '?'));
+                $rows = $db->prepare("SELECT `id` FROM `foods` WHERE `id` IN ($ph)");
+                $rows->execute($included);
+                $validIds = array_column($rows->fetchAll(), 'id');
+
+                if (!empty($validIds)) {
+                    $insVals   = implode(', ', array_fill(0, count($validIds), '(?,?)'));
+                    $insParams = [];
+                    foreach ($validIds as $fid) {
+                        $insParams[] = $userId;
+                        $insParams[] = (int) $fid;
+                    }
+                    $db->prepare("INSERT IGNORE INTO `user_food_inclusions` (`user_id`,`food_id`) VALUES $insVals")
                        ->execute($insParams);
                 }
             }
@@ -124,6 +150,16 @@ $exclStmt = $db->prepare('
 ');
 $exclStmt->execute([$userId]);
 $currentExclusions = $exclStmt->fetchAll();
+
+$inclStmt = $db->prepare('
+    SELECT ufi.food_id, f.name_en, f.name_el
+    FROM user_food_inclusions ufi
+    JOIN foods f ON f.id = ufi.food_id
+    WHERE ufi.user_id = ?
+    ORDER BY f.name_en
+');
+$inclStmt->execute([$userId]);
+$currentInclusions = $inclStmt->fetchAll();
 
 $pageTitle = __('settings_title');
 $activeNav = 'preferences';
@@ -215,6 +251,8 @@ require_once __DIR__ . '/includes/header.php';
 .excl-chips { display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem;min-height:1.5rem; }
 .excl-chip { display:flex;align-items:center;gap:.3rem;background:#fee2e2;color:#7f1d1d;border-radius:99px;padding:.28rem .7rem;font-size:.8rem;font-weight:600; }
 .excl-chip button { background:none;border:none;cursor:pointer;color:#dc2626;font-size:.9rem;padding:0;line-height:1; }
+.incl-chip { background:#dcfce7;color:#14532d; }
+.incl-chip button { color:#15803d; }
 .no-excl { font-size:.8rem;color:#94a3b8;font-style:italic; }
 .btn-save-settings {
     background: #2ecc71;
@@ -254,6 +292,7 @@ require_once __DIR__ . '/includes/header.php';
         <input type="hidden" name="csrf_token"   value="<?= csrfToken() ?>">
         <input type="hidden" name="food_adventure" id="s-input-adventure" value="<?= $currentAdventure ?>">
         <input type="hidden" name="excluded_ids"  id="s-input-excluded"  value="<?= htmlspecialchars(implode(',', array_column($currentExclusions, 'food_id'))) ?>">
+        <input type="hidden" name="included_ids"  id="s-input-included"  value="<?= htmlspecialchars(implode(',', array_column($currentInclusions, 'food_id'))) ?>">
 
         <!-- Hidden allergy checkboxes -->
         <?php foreach (['gluten','dairy','nuts','eggs','shellfish','soy'] as $a): ?>
@@ -321,6 +360,33 @@ require_once __DIR__ . '/includes/header.php';
                 <?php foreach ($currentExclusions as $ex): ?>
                 <div class="excl-chip" data-fid="<?= $ex['food_id'] ?>">
                     <span><?= htmlspecialchars($GLOBALS['_kcals_lang'] === 'el' ? $ex['name_el'] : $ex['name_en']) ?></span>
+                    <button type="button" aria-label="Remove">&times;</button>
+                </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- ===== Included Foods ===== -->
+        <div class="settings-card">
+            <h3>✅ Foods I want in my plan</h3>
+            <p style="font-size:.82rem;color:#64748b;margin:0 0 .875rem;">Pick foods KCALS should try to include at least once when generating your weekly plan.</p>
+
+            <div class="food-search-box">
+                <svg class="si" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="s-food-include-search" placeholder="<?= htmlspecialchars(__('pref_search_ph')) ?>" autocomplete="off">
+            </div>
+            <div class="food-results" id="s-food-include-results"></div>
+
+            <div class="excl-chips" id="s-incl-chips">
+                <?php if (empty($currentInclusions)): ?>
+                <span class="no-excl">No must-include foods selected.</span>
+                <?php else: ?>
+                <?php foreach ($currentInclusions as $inc): ?>
+                <div class="excl-chip incl-chip" data-fid="<?= $inc['food_id'] ?>">
+                    <span><?= htmlspecialchars($GLOBALS['_kcals_lang'] === 'el' ? $inc['name_el'] : $inc['name_en']) ?></span>
                     <button type="button" aria-label="Remove">&times;</button>
                 </div>
                 <?php endforeach; ?>
@@ -400,9 +466,13 @@ require_once __DIR__ . '/includes/header.php';
 (function () {
     var lang = <?= json_encode($GLOBALS['_kcals_lang'] ?? 'en') ?>;
     var excludedMap = {};
+    var includedMap = {};
 
     <?php foreach ($currentExclusions as $ex): ?>
     excludedMap[<?= (int)$ex['food_id'] ?>] = {name_en: <?= json_encode($ex['name_en']) ?>, name_el: <?= json_encode($ex['name_el']) ?>};
+    <?php endforeach; ?>
+    <?php foreach ($currentInclusions as $inc): ?>
+    includedMap[<?= (int)$inc['food_id'] ?>] = {name_en: <?= json_encode($inc['name_en']) ?>, name_el: <?= json_encode($inc['name_el']) ?>};
     <?php endforeach; ?>
 
     function foodName(item) { return lang === 'el' ? item.name_el : item.name_en; }
@@ -441,12 +511,19 @@ require_once __DIR__ . '/includes/header.php';
                 var chip = document.createElement('div');
                 chip.className = 'excl-chip';
                 chip.dataset.fid = fid;
-                chip.innerHTML = '<span>' + foodName(item) + '</span><button type="button" aria-label="Remove">&times;</button>';
-                chip.querySelector('button').addEventListener('click', function () {
+                var label = document.createElement('span');
+                label.textContent = foodName(item);
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.setAttribute('aria-label', 'Remove');
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', function () {
                     delete excludedMap[fid];
                     syncInput();
                     renderExclChips();
                 });
+                chip.appendChild(label);
+                chip.appendChild(removeBtn);
                 container.appendChild(chip);
             });
         }
@@ -454,6 +531,7 @@ require_once __DIR__ . '/includes/header.php';
 
     function syncInput() {
         document.getElementById('s-input-excluded').value = Object.keys(excludedMap).join(',');
+        document.getElementById('s-input-included').value = Object.keys(includedMap).join(',');
     }
 
     // Wire up existing chip remove buttons
@@ -466,10 +544,56 @@ require_once __DIR__ . '/includes/header.php';
         });
     });
 
+    // ---- Inclusion chips ----
+    function renderInclChips() {
+        var container = document.getElementById('s-incl-chips');
+        container.innerHTML = '';
+        var ids = Object.keys(includedMap);
+        if (!ids.length) {
+            var lbl = document.createElement('span');
+            lbl.className = 'no-excl';
+            lbl.textContent = 'No must-include foods selected.';
+            container.appendChild(lbl);
+        } else {
+            ids.forEach(function (fid) {
+                var item = includedMap[fid];
+                var chip = document.createElement('div');
+                chip.className = 'excl-chip incl-chip';
+                chip.dataset.fid = fid;
+                var label = document.createElement('span');
+                label.textContent = foodName(item);
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.setAttribute('aria-label', 'Remove');
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', function () {
+                    delete includedMap[fid];
+                    syncInput();
+                    renderInclChips();
+                });
+                chip.appendChild(label);
+                chip.appendChild(removeBtn);
+                container.appendChild(chip);
+            });
+        }
+    }
+
+    document.querySelectorAll('#s-incl-chips .excl-chip button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var fid = btn.closest('.excl-chip').dataset.fid;
+            delete includedMap[fid];
+            syncInput();
+            renderInclChips();
+        });
+    });
+
     // ---- Food search ----
     var searchInput = document.getElementById('s-food-search');
     var resultsBox  = document.getElementById('s-food-results');
+    var includeSearchInput = document.getElementById('s-food-include-search');
+    var includeResultsBox  = document.getElementById('s-food-include-results');
     var timer;
+    var includeTimer;
 
     searchInput.addEventListener('input', function () {
         clearTimeout(timer);
@@ -482,6 +606,18 @@ require_once __DIR__ . '/includes/header.php';
     });
     searchInput.addEventListener('focus', function () {
         if (resultsBox.innerHTML) resultsBox.classList.add('visible');
+    });
+    includeSearchInput.addEventListener('input', function () {
+        clearTimeout(includeTimer);
+        var q = includeSearchInput.value.trim();
+        if (q.length < 2) { includeResultsBox.innerHTML = ''; includeResultsBox.classList.remove('visible'); return; }
+        includeTimer = setTimeout(function () { doIncludeSearch(q); }, 220);
+    });
+    includeSearchInput.addEventListener('blur', function () {
+        setTimeout(function () { includeResultsBox.classList.remove('visible'); }, 200);
+    });
+    includeSearchInput.addEventListener('focus', function () {
+        if (includeResultsBox.innerHTML) includeResultsBox.classList.add('visible');
     });
 
     function doSearch(q) {
@@ -496,16 +632,23 @@ require_once __DIR__ . '/includes/header.php';
                         var isExcl = !!excludedMap[food.id];
                         var div = document.createElement('div');
                         div.className = 'fri';
-                        div.innerHTML = (lang === 'el' ? food.name_el : food.name_en) +
-                                        (isExcl ? '<span style="font-size:.7rem;background:#fee2e2;color:#dc2626;border-radius:4px;padding:.1rem .3rem;">excluded</span>' : '');
+                        div.appendChild(document.createTextNode(lang === 'el' ? food.name_el : food.name_en));
+                        if (isExcl) {
+                            var tag = document.createElement('span');
+                            tag.style.cssText = 'font-size:.7rem;background:#fee2e2;color:#dc2626;border-radius:4px;padding:.1rem .3rem;';
+                            tag.textContent = 'excluded';
+                            div.appendChild(tag);
+                        }
                         div.addEventListener('click', function () {
                             if (isExcl) {
                                 delete excludedMap[food.id];
                             } else {
                                 excludedMap[food.id] = {name_en: food.name_en, name_el: food.name_el};
+                                delete includedMap[food.id];
                             }
                             syncInput();
                             renderExclChips();
+                            renderInclChips();
                             searchInput.value = '';
                             resultsBox.innerHTML = '';
                             resultsBox.classList.remove('visible');
@@ -514,6 +657,51 @@ require_once __DIR__ . '/includes/header.php';
                     });
                 }
                 resultsBox.classList.add('visible');
+            });
+    }
+
+    function doIncludeSearch(q) {
+        fetch(<?= json_encode(BASE_URL . '/ajax/food_search.php') ?> + '?q=' + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                includeResultsBox.innerHTML = '';
+                if (!data.length) {
+                    includeResultsBox.innerHTML = '<div style="padding:.65rem;font-size:.8rem;color:#94a3b8;">No foods found.</div>';
+                } else {
+                    data.forEach(function (food) {
+                        var isIncl = !!includedMap[food.id];
+                        var isExcl = !!excludedMap[food.id];
+                        var div = document.createElement('div');
+                        div.className = 'fri';
+                        div.appendChild(document.createTextNode(lang === 'el' ? food.name_el : food.name_en));
+                        if (isExcl) {
+                            var blockedTag = document.createElement('span');
+                            blockedTag.style.cssText = 'font-size:.7rem;background:#fee2e2;color:#dc2626;border-radius:4px;padding:.1rem .3rem;';
+                            blockedTag.textContent = 'excluded';
+                            div.appendChild(blockedTag);
+                        } else if (isIncl) {
+                            var tag = document.createElement('span');
+                            tag.style.cssText = 'font-size:.7rem;background:#dcfce7;color:#15803d;border-radius:4px;padding:.1rem .3rem;';
+                            tag.textContent = 'included';
+                            div.appendChild(tag);
+                        }
+                        div.addEventListener('click', function () {
+                            if (isExcl) return;
+                            if (isIncl) {
+                                delete includedMap[food.id];
+                            } else {
+                                includedMap[food.id] = {name_en: food.name_en, name_el: food.name_el};
+                            }
+                            syncInput();
+                            renderInclChips();
+                            includeSearchInput.value = '';
+                            includeResultsBox.innerHTML = '';
+                            includeResultsBox.classList.remove('visible');
+                        });
+                        includeResultsBox.appendChild(div);
+                    });
+                }
+                includeResultsBox.classList.add('visible');
             });
     }
 })();

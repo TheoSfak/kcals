@@ -92,7 +92,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_general'])) {
 }
 
 // ---- Handle POST: Appearance ----
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_appearance'])) {
+// ---- Handle POST: Reset Appearance ----
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_appearance'])) {
+    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
+        $errors[] = 'Invalid form submission. Please refresh and try again.';
+    } else {
+        $defaults = [
+            'appearance_accent'        => '#27AE60',
+            'appearance_accent_dark'   => '#1E8449',
+            'appearance_bg'            => '#F7F9FC',
+            'appearance_font_family'   => 'Inter',
+            'appearance_font_size'     => '16',
+            'appearance_border_radius' => '14',
+            'appearance_site_name'     => 'KCALS',
+        ];
+        foreach ($defaults as $k => $v) saveSetting($k, $v);
+        header('Location: ' . BASE_URL . '/admin/settings.php?saved=1&tab=appearance');
+        exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_appearance']) && !isset($_POST['reset_appearance'])) {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $errors[] = 'Invalid form submission. Please refresh and try again.';
     } else {
@@ -114,22 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_appearance'])) {
 
 $activeTab = $_GET['tab'] ?? 'general';
 if (!in_array($activeTab, ['general', 'smtp', 'updates', 'appearance', 'translations'], true)) $activeTab = 'general';
-
-// ---- Reset Appearance to defaults ----
-if (isset($_GET['reset_appearance']) && $activeTab === 'appearance') {
-    $defaults = [
-        'appearance_accent'        => '#27AE60',
-        'appearance_accent_dark'   => '#1E8449',
-        'appearance_bg'            => '#F7F9FC',
-        'appearance_font_family'   => 'Inter',
-        'appearance_font_size'     => '16',
-        'appearance_border_radius' => '14',
-        'appearance_site_name'     => 'KCALS',
-    ];
-    foreach ($defaults as $k => $v) saveSetting($k, $v);
-    header('Location: ' . BASE_URL . '/admin/settings.php?saved=1&tab=appearance');
-    exit;
-}
 
 // Load current values
 $s  = getSettings($smtpKeys);
@@ -507,12 +511,12 @@ require_once __DIR__ . '/includes/header.php';
                 <i data-lucide="save" style="width:16px;height:16px;"></i>
                 Save Appearance
             </button>
-            <a href="<?= BASE_URL ?>/admin/settings.php?tab=appearance&reset_appearance=1"
-               class="btn btn-outline"
-               onclick="return confirm('Reset all appearance settings to defaults?')">
+            <button type="submit" name="reset_appearance" value="1"
+                    class="btn btn-outline"
+                    onclick="return confirm('Reset all appearance settings to defaults?')">
                 <i data-lucide="rotate-ccw" style="width:16px;height:16px;"></i>
                 Reset to Defaults
-            </a>
+            </button>
         </div>
 
     </form>

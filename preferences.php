@@ -477,23 +477,19 @@ require_once __DIR__ . '/includes/header.php';
 
     document.getElementById('btn-1-next').addEventListener('click', function () { goTo(2); });
     document.getElementById('btn-2-next').addEventListener('click', function () { goTo(3); });
-    document.getElementById('btn-2-back').addEventListener('click', function () { goTo(1); currentStep = 2; goTo(1); });
-    document.getElementById('btn-3-back').addEventListener('click', function () {
-        document.getElementById('step-3').style.display = 'none';
-        document.getElementById('dot-3').className = 'pref-step-dot';
-        currentStep = 2;
-        document.getElementById('step-2').style.display = '';
-        document.getElementById('dot-2').className = 'pref-step-dot active';
-    });
-
-    // Fix back buttons (the generic goTo trick from btn-2-back was wrong)
-    document.getElementById('btn-2-back').removeEventListener('click', function(){});
     document.getElementById('btn-2-back').addEventListener('click', function () {
         document.getElementById('step-2').style.display = 'none';
         document.getElementById('dot-2').className = 'pref-step-dot';
         currentStep = 1;
         document.getElementById('step-1').style.display = '';
         document.getElementById('dot-1').className = 'pref-step-dot active';
+    });
+    document.getElementById('btn-3-back').addEventListener('click', function () {
+        document.getElementById('step-3').style.display = 'none';
+        document.getElementById('dot-3').className = 'pref-step-dot';
+        currentStep = 2;
+        document.getElementById('step-2').style.display = '';
+        document.getElementById('dot-2').className = 'pref-step-dot active';
     });
 
     // ======== Adventure cards ========
@@ -532,13 +528,19 @@ require_once __DIR__ . '/includes/header.php';
                 var chip = document.createElement('div');
                 chip.className = 'excl-chip';
                 chip.dataset.fid = fid;
-                chip.innerHTML = '<span>' + (lang === 'el' ? item.name_el : item.name_en) + '</span>' +
-                                 '<button type="button" aria-label="Remove">&times;</button>';
-                chip.querySelector('button').addEventListener('click', function () {
+                var label = document.createElement('span');
+                label.textContent = lang === 'el' ? item.name_el : item.name_en;
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.setAttribute('aria-label', 'Remove');
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', function () {
                     delete excludedMap[fid];
                     syncExcludedInput();
                     renderExclChips();
                 });
+                chip.appendChild(label);
+                chip.appendChild(removeBtn);
                 container.appendChild(chip);
             });
         }
@@ -579,8 +581,13 @@ require_once __DIR__ . '/includes/header.php';
                         var isExcl = !!excludedMap[food.id];
                         var div = document.createElement('div');
                         div.className = 'food-result-item' + (isExcl ? ' excluded-item' : '');
-                        div.innerHTML = (lang === 'el' ? food.name_el : food.name_en) +
-                                        (isExcl ? '<span class="tag">excluded</span>' : '');
+                        div.appendChild(document.createTextNode(lang === 'el' ? food.name_el : food.name_en));
+                        if (isExcl) {
+                            var tag = document.createElement('span');
+                            tag.className = 'tag';
+                            tag.textContent = 'excluded';
+                            div.appendChild(tag);
+                        }
                         div.addEventListener('click', function () {
                             if (isExcl) {
                                 delete excludedMap[food.id];
