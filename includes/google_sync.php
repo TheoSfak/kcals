@@ -182,6 +182,34 @@ function googleSyncHttpJson(string $method, string $url, string $accessToken, ar
     return $data;
 }
 
+function googleSyncHttpJsonWithStatus(string $method, string $url, string $accessToken, array $payload): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json',
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($body === false) {
+        throw new RuntimeException('Google request failed: ' . $err);
+    }
+    $data = json_decode($body, true);
+    return [
+        'status' => $status,
+        'data' => is_array($data) ? $data : [],
+    ];
+}
+
 function googleSyncHttpMultipart(string $method, string $url, string $accessToken, array $metadata, string $jsonBody): array {
     $boundary = 'kcals_' . bin2hex(random_bytes(12));
     $body = "--$boundary\r\n"
@@ -696,6 +724,253 @@ function googleSyncRestoreDriveBackup(int $userId): array {
     $counts = googleSyncRestoreBackupSnapshot($userId, $download['snapshot']);
     getDB()->prepare('UPDATE google_accounts SET sync_status = ?, last_sync_error = NULL, updated_at = NOW() WHERE user_id = ?')
         ->execute(['restore_ok', $userId]);
+    return $counts;
+}
+
+function googleSyncLatestWeeklyPlan(int $userId): ?array {
+    $stmt = getDB()->prepare('
+        SELECT *
+        FROM weekly_plans
+        WHERE user_id = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    ');
+    $stmt->execute([$userId]);
+    return $stmt->fetch() ?: null;
+}
+
+function googleSyncCalendarTimezone(): string {
+    return 'Europe/Athens';
+}
+
+function googleSyncMealDisplayName(array $meal): string {
+    $lang = $GLOBALS['_kcals_lang'] ?? 'en';
+    if ($lang === 'el' && !empty($meal['name_el'])) return (string) $meal['name_el'];
+    return (string) ($meal['name_en'] ?? $meal['title'] ?? $meal['name_el'] ?? __('meal_slot_lunch'));
+}
+
+function googleSyncPlanDayLabel(string $dayName, string $date): string {
+    $keys = [
+        'Monday' => 'day_monday',
+        'Tuesday' => 'day_tuesday',
+        'Wednesday' => 'day_wednesday',
+        'Thursday' => 'day_thursday',
+        'Friday' => 'day_friday',
+        'Saturday' => 'day_saturday',
+        'Sunday' => 'day_sunday',
+    ];
+    $label = isset($keys[$dayName]) ? __($keys[$dayName]) : $dayName;
+    return $label . ' ' . date('d/m', strtotime($date));
+}
+
+function googleSyncCalendarEventTime(string $mealDate, string $reminderMode): array {
+    $tz = new DateTimeZone(googleSyncCalendarTimezone());
+    if ($reminderMode === 'previous_evening') {
+        $start = new DateTimeImmutable($mealDate . ' 20:00:00', $tz);
+        $start = $start->modify('-1 day');
+    } else {
+        $start = new DateTimeImmutable($mealDate . ' 08:00:00', $tz);
+    }
+    $end = $start->modify('+30 minutes');
+    return [$start, $end];
+}
+
+function googleSyncBuildCalendarEvents(array $planRow, string $reminderMode): array {
+    $planData = json_decode((string) ($planRow['plan_data_json'] ?? ''), true);
+    if (!is_array($planData)) return [];
+
+    $startDate = new DateTimeImmutable((string) $planRow['start_date']);
+    $events = [];
+    $dayIndex = 0;
+    foreach ($planData as $dayName => $meals) {
+        if (!is_array($meals)) {
+            $dayIndex++;
+            continue;
+        }
+        $mealDate = $startDate->modify('+' . $dayIndex . ' days')->format('Y-m-d');
+        [$eventStart, $eventEnd] = googleSyncCalendarEventTime($mealDate, $reminderMode);
+        $lines = [];
+        foreach ($meals as $meal) {
+            if (!is_array($meal)) continue;
+            $slot = (string) ($meal['slot'] ?? $meal['category'] ?? 'lunch');
+            $lines[] = sprintf(
+                '%s: %s (%d min, %d kcal)',
+                __('meal_slot_' . $slot),
+                googleSyncMealDisplayName($meal),
+                (int) ($meal['prep_minutes'] ?? 0),
+                (int) ($meal['calories'] ?? 0)
+            );
+        }
+        if (!$lines) {
+            $dayIndex++;
+            continue;
+        }
+
+        $eventKey = 'plan-' . (int) $planRow['id'] . '-' . $mealDate . '-meal-prep';
+        $dayLabel = googleSyncPlanDayLabel((string) $dayName, $mealDate);
+        $body = [
+            'summary' => sprintf(__('google_calendar_event_summary'), $dayLabel),
+            'description' => sprintf(
+                __('google_calendar_event_description'),
+                implode("\n", $lines),
+                (string) $planRow['start_date'],
+                (string) $planRow['end_date']
+            ),
+            'start' => [
+                'dateTime' => $eventStart->format(DateTimeInterface::RFC3339),
+                'timeZone' => googleSyncCalendarTimezone(),
+            ],
+            'end' => [
+                'dateTime' => $eventEnd->format(DateTimeInterface::RFC3339),
+                'timeZone' => googleSyncCalendarTimezone(),
+            ],
+            'reminders' => [
+                'useDefault' => false,
+                'overrides' => $reminderMode === 'none' ? [] : [
+                    ['method' => 'popup', 'minutes' => 10],
+                ],
+            ],
+            'extendedProperties' => [
+                'private' => [
+                    'kcals_event_key' => $eventKey,
+                    'kcals_plan_id' => (string) (int) $planRow['id'],
+                    'kcals_event_type' => 'meal_prep',
+                ],
+            ],
+        ];
+
+        $events[] = [
+            'event_key' => $eventKey,
+            'event_date' => $mealDate,
+            'event_type' => 'meal_prep',
+            'body' => $body,
+        ];
+        $dayIndex++;
+    }
+    return $events;
+}
+
+function googleSyncCalendarApiUrl(string $calendarId, ?string $eventId = null): string {
+    $base = 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($calendarId) . '/events';
+    return $eventId === null ? $base : $base . '/' . rawurlencode($eventId);
+}
+
+function googleSyncCreateCalendarEvent(string $accessToken, string $calendarId, array $body): array {
+    $result = googleSyncHttpJsonWithStatus(
+        'POST',
+        googleSyncCalendarApiUrl($calendarId) . '?sendUpdates=none',
+        $accessToken,
+        $body
+    );
+    if ($result['status'] < 200 || $result['status'] >= 300) {
+        throw new RuntimeException('Google Calendar event creation failed.');
+    }
+    return $result['data'];
+}
+
+function googleSyncUpdateCalendarEvent(string $accessToken, string $calendarId, string $eventId, array $body): ?array {
+    $result = googleSyncHttpJsonWithStatus(
+        'PUT',
+        googleSyncCalendarApiUrl($calendarId, $eventId) . '?sendUpdates=none',
+        $accessToken,
+        $body
+    );
+    if ($result['status'] === 404 || $result['status'] === 410) {
+        return null;
+    }
+    if ($result['status'] < 200 || $result['status'] >= 300) {
+        throw new RuntimeException('Google Calendar event update failed.');
+    }
+    return $result['data'];
+}
+
+function googleSyncUpsertCalendarEvent(int $userId, int $weeklyPlanId, string $accessToken, string $calendarId, array $event): string {
+    $db = getDB();
+    $existingStmt = $db->prepare('
+        SELECT google_event_id
+        FROM google_calendar_events
+        WHERE user_id = ? AND event_key = ?
+        LIMIT 1
+    ');
+    $existingStmt->execute([$userId, $event['event_key']]);
+    $existingEventId = (string) ($existingStmt->fetchColumn() ?: '');
+
+    $googleEvent = null;
+    $updatedExisting = false;
+    if ($existingEventId !== '') {
+        $googleEvent = googleSyncUpdateCalendarEvent($accessToken, $calendarId, $existingEventId, $event['body']);
+        $updatedExisting = $googleEvent !== null;
+    }
+    if ($googleEvent === null) {
+        $googleEvent = googleSyncCreateCalendarEvent($accessToken, $calendarId, $event['body']);
+    }
+
+    $googleEventId = (string) ($googleEvent['id'] ?? '');
+    if ($googleEventId === '') {
+        throw new RuntimeException('Google Calendar did not return an event ID.');
+    }
+
+    $stmt = $db->prepare('
+        INSERT INTO google_calendar_events
+            (user_id, weekly_plan_id, event_key, google_event_id, event_date, event_type, created_at, updated_at)
+        VALUES
+            (?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            weekly_plan_id = VALUES(weekly_plan_id),
+            google_event_id = VALUES(google_event_id),
+            event_date = VALUES(event_date),
+            event_type = VALUES(event_type),
+            updated_at = NOW()
+    ');
+    $stmt->execute([
+        $userId,
+        $weeklyPlanId,
+        $event['event_key'],
+        $googleEventId,
+        $event['event_date'],
+        $event['event_type'],
+    ]);
+    return $updatedExisting ? 'updated' : 'created';
+}
+
+function googleSyncCalendarNow(int $userId): array {
+    if (!googleSyncIsConfigured()) {
+        throw new RuntimeException('Google Sync is not configured.');
+    }
+    $connection = googleSyncGetConnection($userId);
+    if (!$connection) {
+        throw new RuntimeException('Google account is not connected.');
+    }
+    if (!googleSyncHasCalendarScope($connection)) {
+        throw new RuntimeException('Google Calendar permission is missing.');
+    }
+    $plan = googleSyncLatestWeeklyPlan($userId);
+    if (!$plan) {
+        throw new RuntimeException('No weekly plan found.');
+    }
+
+    $accessToken = googleSyncAccessToken($userId, $connection);
+    $calendarId = (string) ($connection['calendar_id'] ?? 'primary') ?: 'primary';
+    $reminderMode = (string) ($connection['calendar_reminder_mode'] ?? 'previous_evening');
+    if (!in_array($reminderMode, googleSyncCalendarReminderModes(), true)) {
+        $reminderMode = 'previous_evening';
+    }
+    $events = googleSyncBuildCalendarEvents($plan, $reminderMode);
+    if (!$events) {
+        throw new RuntimeException('No calendar events could be built from this plan.');
+    }
+
+    $counts = ['created' => 0, 'updated' => 0, 'total' => 0];
+    foreach ($events as $event) {
+        $result = googleSyncUpsertCalendarEvent($userId, (int) $plan['id'], $accessToken, $calendarId, $event);
+        $counts[$result]++;
+        $counts['total']++;
+    }
+    getDB()->prepare('
+        UPDATE google_accounts
+        SET calendar_last_sync_at = NOW(), sync_status = ?, last_sync_error = NULL, updated_at = NOW()
+        WHERE user_id = ?
+    ')->execute(['calendar_ok', $userId]);
     return $counts;
 }
 

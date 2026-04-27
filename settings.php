@@ -168,12 +168,14 @@ $googleConnection = googleSyncGetConnection($userId);
 $googleRedirectUri = googleSyncRedirectUri();
 $googleRestorePreview = $_SESSION['google_restore_preview'] ?? null;
 $googleRestoreCounts = $_SESSION['google_restore_counts'] ?? null;
+$googleCalendarSyncCounts = $_SESSION['google_calendar_sync_counts'] ?? null;
 $googleCalendarReady = googleSyncHasCalendarScope($googleConnection);
 $googleCalendarReminderMode = (string) ($googleConnection['calendar_reminder_mode'] ?? 'previous_evening');
 if (!in_array($googleCalendarReminderMode, googleSyncCalendarReminderModes(), true)) {
     $googleCalendarReminderMode = 'previous_evening';
 }
 unset($_SESSION['google_restore_counts']);
+unset($_SESSION['google_calendar_sync_counts']);
 
 $pageTitle = __('settings_title');
 $activeNav = 'preferences';
@@ -315,6 +317,8 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert-success"><?= __('google_sync_restore_ok') ?></div>
     <?php elseif ($googleStatus === 'calendar_saved'): ?>
     <div class="alert-success"><?= __('google_calendar_saved') ?></div>
+    <?php elseif ($googleStatus === 'calendar_sync_ok'): ?>
+    <div class="alert-success"><?= __('google_calendar_sync_ok') ?></div>
     <?php elseif ($googleStatus === 'config'): ?>
     <div class="alert-error"><?= __('google_sync_config_missing') ?></div>
     <?php elseif ($googleStatus === 'not_connected'): ?>
@@ -325,6 +329,10 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert-error"><?= __('google_sync_preview_error') ?></div>
     <?php elseif ($googleStatus === 'restore_error'): ?>
     <div class="alert-error"><?= __('google_sync_restore_error') ?></div>
+    <?php elseif ($googleStatus === 'calendar_reconnect'): ?>
+    <div class="alert-error"><?= __('google_calendar_reconnect_needed') ?></div>
+    <?php elseif ($googleStatus === 'calendar_sync_error'): ?>
+    <div class="alert-error"><?= __('google_calendar_sync_error') ?></div>
     <?php elseif ($googleStatus === 'error'): ?>
     <div class="alert-error"><?= __('google_sync_error') ?></div>
     <?php endif; ?>
@@ -404,6 +412,14 @@ require_once __DIR__ . '/includes/header.php';
                     <i data-lucide="calendar-check" style="width:14px;height:14px;"></i>
                     <?= __('google_calendar_status_ready') ?>
                 </span>
+                <form method="POST" action="<?= BASE_URL ?>/google_calendar_sync.php" style="display:inline-flex;margin-left:.5rem;"
+                      onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('google_calendar_sync_confirm')), ENT_QUOTES) ?>)">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i data-lucide="calendar-plus" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                        <?= __('google_calendar_sync_now') ?>
+                    </button>
+                </form>
             <?php elseif ($googleConnection): ?>
                 <span class="google-sync-pill warn">
                     <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
@@ -418,6 +434,21 @@ require_once __DIR__ . '/includes/header.php';
                     <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
                     <?= __('google_calendar_status_connect') ?>
                 </span>
+            <?php endif; ?>
+            <?php if ($googleConnection && !empty($googleConnection['calendar_last_sync_at'])): ?>
+            <p style="font-size:.78rem;color:#64748b;margin:.7rem 0 0;">
+                <?= __('google_calendar_last_sync') ?>: <?= htmlspecialchars(date('d/m/Y H:i', strtotime($googleConnection['calendar_last_sync_at']))) ?>
+            </p>
+            <?php endif; ?>
+            <?php if ($googleConnection && is_array($googleCalendarSyncCounts)): ?>
+            <p style="font-size:.78rem;color:#166534;margin:.7rem 0 0;">
+                <?= sprintf(
+                    __('google_calendar_sync_counts'),
+                    (int) $googleCalendarSyncCounts['created'],
+                    (int) $googleCalendarSyncCounts['updated'],
+                    (int) $googleCalendarSyncCounts['total']
+                ) ?>
+            </p>
             <?php endif; ?>
             <p style="font-size:.78rem;color:#64748b;margin:.7rem 0 0;">
                 <?= __('google_calendar_phase_note') ?>
