@@ -552,6 +552,59 @@ select.form-control { cursor: pointer; }
 .meal-ingredients .ing-sep { color: var(--border); margin: 0 0.15rem; }
 .meal-ingredients .ing-item strong { color: var(--slate); font-weight: 600; }
 .meal-kcal  { font-size: 0.75rem; font-weight: 700; color: var(--slate-mid); flex-shrink: 0; }
+.meal-item-replaced {
+    background: #f8fafc;
+}
+.meal-replaced-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.35rem;
+    padding: 0.06rem 0.35rem;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.meal-replace {
+    margin-top: 0.45rem;
+}
+.meal-replace summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--green-dark);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+    list-style: none;
+}
+.meal-replace summary::-webkit-details-marker {
+    display: none;
+}
+.meal-replace-form {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.45rem;
+}
+.meal-replace-select {
+    max-width: 190px;
+    min-height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--slate);
+    font-size: 0.78rem;
+    padding: 0.35rem 0.5rem;
+}
+.meal-replace-submit {
+    min-height: 34px;
+    padding: 0.35rem 0.65rem;
+}
 
 /* ---------- Progress Chart ---------- */
 .chart-wrap {

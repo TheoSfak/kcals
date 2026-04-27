@@ -60,12 +60,301 @@ $inclStmt = $db->prepare('
 $inclStmt->execute([$userId]);
 $currentInclusions = $inclStmt->fetchAll();
 $includedIds = array_map('intval', array_column($currentInclusions, 'food_id'));
+$mainCookingFamilies = ['heavy_mixed', 'fish', 'shellfish', 'red_meat', 'pork', 'lamb', 'poultry'];
+
+function kcalsPlanComponentIds(array $meal): array {
+    $ids = [];
+    foreach (($meal['components'] ?? []) as $component) {
+        $foodId = (int) ($component['food_id'] ?? 0);
+        if ($foodId > 0) {
+            $ids[$foodId] = true;
+        }
+    }
+    return array_keys($ids);
+}
+
+function kcalsPlanMealHasAnyFood(array $meal, array $foodIds): bool {
+    if (empty($foodIds)) {
+        return false;
+    }
+    return !empty(array_intersect(kcalsPlanComponentIds($meal), array_map('intval', $foodIds)));
+}
+
+function kcalsPlanReplacementAvoidIds(array $meal, string $reason): array {
+    $ids = [];
+    foreach (($meal['components'] ?? []) as $component) {
+        $foodId = (int) ($component['food_id'] ?? 0);
+        if ($foodId <= 0) {
+            continue;
+        }
+
+        $type = (string) ($component['food_type'] ?? '');
+        $effort = (string) ($component['cooking_effort'] ?? '');
+
+        if ($reason === 'protein') {
+            if (in_array($type, ['protein', 'dairy', 'mixed'], true)) {
+                $ids[$foodId] = true;
+            }
+            continue;
+        }
+
+        if (in_array($type, ['mixed', 'protein', 'dairy'], true) || $effort === 'main_cooking') {
+            $ids[$foodId] = true;
+        }
+    }
+
+    if (empty($ids)) {
+        foreach (($meal['components'] ?? []) as $component) {
+            $foodId = (int) ($component['food_id'] ?? 0);
+            if ($foodId > 0) {
+                $ids[$foodId] = true;
+                break;
+            }
+        }
+    }
+
+    return array_keys($ids);
+}
+
+function kcalsPlanMealHasMainCooking(array $meal, array $mainCookingFamilies): bool {
+    foreach (($meal['components'] ?? []) as $component) {
+        $family = (string) ($component['meal_family'] ?? '');
+        $effort = (string) ($component['cooking_effort'] ?? '');
+        if ($effort === 'main_cooking' || in_array($family, $mainCookingFamilies, true)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function kcalsPlanMealScoredFamilies(array $meal, array $mainCookingFamilies): array {
+    $families = [];
+    $countableFamilies = array_merge($mainCookingFamilies, ['legume', 'dairy', 'eggs', 'plant_protein']);
+    foreach (($meal['components'] ?? []) as $component) {
+        $family = (string) ($component['meal_family'] ?? '');
+        $type = (string) ($component['food_type'] ?? '');
+        $effort = (string) ($component['cooking_effort'] ?? '');
+        if (
+            in_array($family, $countableFamilies, true)
+            && ($effort === 'main_cooking' || in_array($type, ['protein', 'dairy', 'mixed'], true))
+        ) {
+            $families[$family] = true;
+        }
+    }
+    return array_keys($families);
+}
+
+function kcalsPlanReplacementContext(array $planData, string $skipDay, int $skipIndex, array $mainCookingFamilies): array {
+    $usedWeekIds = [];
+    $usedTodayIds = [];
+    $weeklyFamilyCounts = [];
+    $weeklyFoodCounts = [];
+    $weeklyTypeCounts = [];
+    $countedTypeFoods = [];
+    $sameDayHasMainCooking = false;
+
+    foreach ($planData as $dayName => $dayMeals) {
+        foreach ($dayMeals as $mealIndex => $meal) {
+            if ((string) $dayName === $skipDay && (int) $mealIndex === $skipIndex) {
+                continue;
+            }
+
+            if (
+                (string) $dayName === $skipDay
+                && in_array((string) ($meal['slot'] ?? ''), ['lunch', 'dinner'], true)
+                && kcalsPlanMealHasMainCooking($meal, $mainCookingFamilies)
+            ) {
+                $sameDayHasMainCooking = true;
+            }
+
+            foreach (kcalsPlanMealScoredFamilies($meal, $mainCookingFamilies) as $family) {
+                $weeklyFamilyCounts[$family] = ($weeklyFamilyCounts[$family] ?? 0) + 1;
+            }
+
+            foreach (($meal['components'] ?? []) as $component) {
+                $foodId = (int) ($component['food_id'] ?? 0);
+                if ($foodId <= 0) {
+                    continue;
+                }
+
+                $type = (string) ($component['food_type'] ?? '');
+                $usedWeekIds[] = $foodId;
+                if ((string) $dayName === $skipDay) {
+                    $usedTodayIds[] = $foodId;
+                }
+
+                $weeklyFoodCounts[$foodId] = ($weeklyFoodCounts[$foodId] ?? 0) + 1;
+                if ($type !== '' && empty($countedTypeFoods[$type][$foodId])) {
+                    $weeklyTypeCounts[$type] = ($weeklyTypeCounts[$type] ?? 0) + 1;
+                    $countedTypeFoods[$type][$foodId] = true;
+                }
+            }
+        }
+    }
+
+    return [
+        'used_week_ids' => array_values(array_unique($usedWeekIds)),
+        'used_today_ids' => array_values(array_unique($usedTodayIds)),
+        'weekly_family_counts' => $weeklyFamilyCounts,
+        'weekly_food_counts' => $weeklyFoodCounts,
+        'weekly_type_counts' => $weeklyTypeCounts,
+        'same_day_has_main_cooking' => $sameDayHasMainCooking,
+    ];
+}
+
+function kcalsPlanIncludedNames(array $currentInclusions, array $foodIds): array {
+    $foodIds = array_map('intval', $foodIds);
+    $names = [];
+    foreach ($currentInclusions as $food) {
+        if (in_array((int) $food['food_id'], $foodIds, true)) {
+            $names[] = ($GLOBALS['_kcals_lang'] === 'el') ? $food['name_el'] : $food['name_en'];
+        }
+    }
+    return $names;
+}
 
 // ---- Generate / Regenerate Plan ----
 $generated = false;
 $genError  = '';
+$replaceSuccess = false;
+$replaceWarning = '';
 $includedUsedNames = [];
 $includedSkippedNames = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'replace_meal') {
+    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
+        $genError = __('err_plan_invalid');
+    } else {
+        $replaceReasons = ['new', 'quick', 'simple', 'protein'];
+        $planId = (int) ($_POST['plan_id'] ?? 0);
+        $dayName = (string) ($_POST['day_name'] ?? '');
+        $mealIndex = (int) ($_POST['meal_index'] ?? -1);
+        $slot = (string) ($_POST['slot'] ?? '');
+        $reason = (string) ($_POST['replace_reason'] ?? 'new');
+        if (!in_array($reason, $replaceReasons, true)) {
+            $reason = 'new';
+        }
+
+        $planRowStmt = $db->prepare('SELECT * FROM weekly_plans WHERE id = ? AND user_id = ? LIMIT 1');
+        $planRowStmt->execute([$planId, $userId]);
+        $planRow = $planRowStmt->fetch();
+        $planDataForReplace = $planRow ? json_decode($planRow['plan_data_json'], true) : null;
+
+        if (
+            !$planRow
+            || !is_array($planDataForReplace)
+            || !isset($planDataForReplace[$dayName][$mealIndex])
+            || !is_array($planDataForReplace[$dayName][$mealIndex])
+        ) {
+            $genError = __('plan_replace_error');
+        } else {
+            $oldMeal = $planDataForReplace[$dayName][$mealIndex];
+            $slot = in_array($slot, ['breakfast', 'lunch', 'dinner', 'snack'], true)
+                ? $slot
+                : (string) ($oldMeal['slot'] ?? 'lunch');
+            $targetKcal = max(120, (int) ($oldMeal['calories'] ?? 0));
+
+            $dislikeStmt = $db->prepare('SELECT ingredient_name FROM user_dislikes WHERE user_id = ?');
+            $dislikeStmt->execute([$userId]);
+            $dislikes = array_column($dislikeStmt->fetchAll(), 'ingredient_name');
+
+            $activeAllergies = [];
+            foreach (['gluten','dairy','nuts','eggs','shellfish','soy'] as $a) {
+                if (!empty($user['allergy_' . $a])) {
+                    $activeAllergies[] = $a;
+                }
+            }
+            $exclStmt = $db->prepare('SELECT food_id FROM user_food_exclusions WHERE user_id = ?');
+            $exclStmt->execute([$userId]);
+            $excludedIds = array_map('intval', array_column($exclStmt->fetchAll(), 'food_id'));
+
+            require_once __DIR__ . '/engine/meal_builder.php';
+
+            $context = kcalsPlanReplacementContext($planDataForReplace, $dayName, $mealIndex, $mainCookingFamilies);
+            $avoidIds = kcalsPlanReplacementAvoidIds($oldMeal, $reason);
+
+            $slotProfile = [
+                'adventure'    => (int) ($user['food_adventure'] ?? 2),
+                'allergies'    => $activeAllergies,
+                'excluded_ids' => array_values(array_unique(array_merge($excludedIds, $avoidIds))),
+                'sleep_boost'  => $sleepBoost,
+                'strength_day' => $strengthDay,
+                'comfort_food_mode' => $isRecoveryMode,
+                'complex_carb_bias' => isRechargeDay($dayName, $rechargeDay),
+                'weekly_family_counts' => $context['weekly_family_counts'],
+                'weekly_food_counts' => $context['weekly_food_counts'],
+                'weekly_type_counts' => $context['weekly_type_counts'],
+            ];
+
+            if ($reason === 'quick') {
+                $slotProfile['quick_main_only'] = true;
+                $slotProfile['max_prep_minutes'] = in_array($slot, ['lunch', 'dinner'], true) ? 15 : 8;
+                if (in_array($slot, ['lunch', 'dinner'], true)) {
+                    $slotProfile['avoid_meal_families'] = $mainCookingFamilies;
+                }
+            } elseif ($reason === 'simple') {
+                $slotProfile['adventure'] = 0;
+                $slotProfile['quick_main_only'] = true;
+                $slotProfile['max_prep_minutes'] = in_array($slot, ['lunch', 'dinner'], true) ? 20 : 8;
+                $slotProfile['avoid_meal_families'] = ['heavy_mixed', 'shellfish', 'red_meat', 'pork', 'lamb'];
+            } elseif ($reason === 'protein') {
+                $slotProfile['quick_main_only'] = false;
+            }
+
+            if (
+                in_array($slot, ['lunch', 'dinner'], true)
+                && !empty($context['same_day_has_main_cooking'])
+            ) {
+                $slotProfile['quick_main_only'] = true;
+                $slotProfile['max_prep_minutes'] = min((int) ($slotProfile['max_prep_minutes'] ?? 20), 20);
+                $slotProfile['avoid_meal_families'] = array_values(array_unique(array_merge(
+                    (array) ($slotProfile['avoid_meal_families'] ?? []),
+                    $mainCookingFamilies
+                )));
+            }
+
+            $builder = new MealBuilder($db, (string) $user['diet_type'], (int) date('n'), $dislikes, $slotProfile);
+            $usedWeek = array_values(array_unique(array_merge($context['used_week_ids'], $avoidIds)));
+            $usedToday = array_values(array_unique(array_merge($context['used_today_ids'], $avoidIds)));
+            $replacement = $builder->buildMeal($slot, $targetKcal, $usedWeek, $usedToday);
+
+            if (empty($replacement['components'])) {
+                $genError = __('plan_replace_error');
+            } else {
+                $replacement['replaced'] = true;
+                $replacement['replace_reason'] = $reason;
+                $replacement['replaced_at'] = date('c');
+                $planDataForReplace[$dayName][$mealIndex] = $replacement;
+
+                $upd = $db->prepare('UPDATE weekly_plans SET plan_data_json = ? WHERE id = ? AND user_id = ?');
+                $upd->execute([
+                    json_encode($planDataForReplace, JSON_UNESCAPED_UNICODE),
+                    $planId,
+                    $userId,
+                ]);
+
+                $replaceSuccess = true;
+
+                if (kcalsPlanMealHasAnyFood($oldMeal, $includedIds)) {
+                    $foodIdsInPlan = [];
+                    foreach ($planDataForReplace as $dayMeals) {
+                        foreach ($dayMeals as $meal) {
+                            $foodIdsInPlan = array_merge($foodIdsInPlan, kcalsPlanComponentIds($meal));
+                        }
+                    }
+                    $foodIdsInPlan = array_values(array_unique($foodIdsInPlan));
+                    $missingIncludeIds = array_values(array_diff($includedIds, $foodIdsInPlan));
+                    if (!empty($missingIncludeIds)) {
+                        $replaceWarning = sprintf(
+                            __('plan_replace_include_warning'),
+                            htmlspecialchars(implode(', ', kcalsPlanIncludedNames($currentInclusions, $missingIncludeIds)))
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate_plan') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
@@ -469,6 +758,17 @@ require_once __DIR__ . '/includes/header.php';
     <?php endif; ?>
     <?php endif; ?>
 
+    <?php if ($replaceSuccess): ?>
+    <div class="alert alert-success" style="margin-bottom:1rem;">
+        <strong><?= __('plan_replace_success') ?></strong> <?= __('plan_replace_success_desc') ?>
+    </div>
+    <?php endif; ?>
+    <?php if ($replaceWarning): ?>
+    <div class="alert" style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; margin-bottom:1rem;">
+        <?= $replaceWarning ?>
+    </div>
+    <?php endif; ?>
+
     <?php if ($genError): ?>
     <div class="alert alert-error" style="margin-bottom:1.5rem;"><?= htmlspecialchars($genError) ?></div>
     <?php endif; ?>
@@ -560,17 +860,23 @@ require_once __DIR__ . '/includes/header.php';
                 <span class="day-kcal"><?= $dayTotal ?> kcal</span>
             </div>
             <div class="meal-list">
-                <?php foreach ($meals as $meal): ?>
+                <?php foreach ($meals as $mealIndex => $meal): ?>
                 <?php
                     $mSlot = $meal['slot'] ?? $meal['category'] ?? 'lunch';
                     $mName = ($GLOBALS['_kcals_lang'] === 'el')
                         ? ($meal['name_el'] ?? $meal['title'] ?? '')
                         : ($meal['name_en'] ?? $meal['title'] ?? '');
+                    $mealHasIncludedFood = kcalsPlanMealHasAnyFood($meal, $includedIds);
                 ?>
-                <div class="meal-item">
+                <div class="meal-item<?= !empty($meal['replaced']) ? ' meal-item-replaced' : '' ?>">
                     <div class="meal-dot <?= htmlspecialchars($mSlot) ?>"></div>
                     <div class="meal-info">
-                        <div class="meal-type"><?= __('meal_slot_' . $mSlot) ?></div>
+                        <div class="meal-type">
+                            <?= __('meal_slot_' . $mSlot) ?>
+                            <?php if (!empty($meal['replaced'])): ?>
+                            <span class="meal-replaced-badge"><?= __('plan_replace_badge') ?></span>
+                            <?php endif; ?>
+                        </div>
                         <div class="meal-name" title="<?= htmlspecialchars($mName) ?>">
                             <?= htmlspecialchars($mName) ?>
                         </div>
@@ -584,6 +890,34 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="meal-ingredients">
                             <?php foreach ($meal['components'] as $ci => $c): ?><?php if ($c['food_id'] > 0): ?><?php if ($ci > 0): ?><span class="ing-sep">&bull;</span><?php endif; ?><span class="ing-item"><?= htmlspecialchars(($GLOBALS['_kcals_lang']==='el') ? $c['name_el'] : $c['name_en']) ?> <strong><?= $c['grams'] ?>g</strong></span><?php endif; ?><?php endforeach; ?>
                         </div>
+                        <?php endif; ?>
+                        <?php if ($plan): ?>
+                        <details class="meal-replace no-print">
+                            <summary>
+                                <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+                                <?= __('plan_replace_btn') ?>
+                            </summary>
+                            <form method="POST" action="<?= BASE_URL ?>/plan.php" class="meal-replace-form">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                                <input type="hidden" name="action" value="replace_meal">
+                                <input type="hidden" name="plan_id" value="<?= (int) $plan['id'] ?>">
+                                <input type="hidden" name="day_name" value="<?= htmlspecialchars($dayName) ?>">
+                                <input type="hidden" name="meal_index" value="<?= (int) $mealIndex ?>">
+                                <input type="hidden" name="slot" value="<?= htmlspecialchars($mSlot) ?>">
+                                <select name="replace_reason" class="meal-replace-select" aria-label="<?= htmlspecialchars(__('plan_replace_reason_label')) ?>">
+                                    <option value="new"><?= __('plan_replace_new') ?></option>
+                                    <option value="quick"><?= __('plan_replace_quick') ?></option>
+                                    <option value="simple"><?= __('plan_replace_simple') ?></option>
+                                    <option value="protein"><?= __('plan_replace_protein') ?></option>
+                                </select>
+                                <button type="submit" class="btn btn-outline btn-sm meal-replace-submit"
+                                        <?php if ($mealHasIncludedFood): ?>
+                                        onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_replace_include_confirm')), ENT_QUOTES) ?>)"
+                                        <?php endif; ?>>
+                                    <?= __('plan_replace_submit') ?>
+                                </button>
+                            </form>
+                        </details>
                         <?php endif; ?>
                     </div>
                     <span class="meal-kcal"><?= $meal['calories'] ?> kcal</span>
