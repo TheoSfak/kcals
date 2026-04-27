@@ -147,7 +147,7 @@ $progressRows = array_reverse($progStmt->fetchAll());
 $planStmt = $db->prepare('
     SELECT * FROM weekly_plans
     WHERE user_id = ?
-    ORDER BY created_at DESC LIMIT 1
+    ORDER BY created_at DESC, id DESC LIMIT 1
 ');
 $planStmt->execute([$userId]);
 $currentPlan = $planStmt->fetch();

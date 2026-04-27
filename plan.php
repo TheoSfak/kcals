@@ -1073,7 +1073,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
             SELECT plan_data_json
             FROM weekly_plans
             WHERE user_id = ?
-            ORDER BY created_at DESC LIMIT 1
+            ORDER BY created_at DESC, id DESC LIMIT 1
         ');
         $lockedPlanStmt->execute([$userId]);
         $lockedPlanRow = $lockedPlanStmt->fetch();
@@ -1365,7 +1365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
 $planStmt = $db->prepare('
     SELECT * FROM weekly_plans
     WHERE user_id = ?
-    ORDER BY created_at DESC LIMIT 1
+    ORDER BY created_at DESC, id DESC LIMIT 1
 ');
 $planStmt->execute([$userId]);
 $plan = $planStmt->fetch();
