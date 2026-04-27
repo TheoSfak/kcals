@@ -1,0 +1,20 @@
+<?php
+// ============================================================
+// KCALS - Google Sync Configuration
+// Copy this file to config/google.php and fill in the values
+// from Google Cloud Console before enabling Google Sync.
+// ============================================================
+
+define('GOOGLE_CLIENT_ID', '');
+define('GOOGLE_CLIENT_SECRET', '');
+
+// Optional. Leave empty to auto-detect:
+//   https://your-domain.com/google_callback.php
+// Local XAMPP example:
+//   http://localhost/kcals/google_callback.php
+define('GOOGLE_REDIRECT_URI', '');
+
+// Required for storing OAuth tokens encrypted in the database.
+// Generate a long random value, for example:
+//   php -r "echo bin2hex(random_bytes(32));"
+define('GOOGLE_TOKEN_ENCRYPTION_KEY', '');

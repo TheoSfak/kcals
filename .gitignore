@@ -2,6 +2,7 @@
 
 # Sensitive config – copy config/db.php.example and fill in credentials
 config/db.php
+config/google.php
 
 # OS
 .DS_Store

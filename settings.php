@@ -5,6 +5,7 @@
 // and search/toggle per-food exclusions after the interview.
 // ============================================================
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/google_sync.php';
 
 requireLogin();
 
@@ -14,6 +15,7 @@ $user   = getCurrentUser();
 
 $saveSuccess = isset($_GET['saved']);
 $errors      = [];
+$googleStatus = $_GET['google'] ?? '';
 
 // ======== HANDLE POST ========
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -161,6 +163,10 @@ $inclStmt = $db->prepare('
 $inclStmt->execute([$userId]);
 $currentInclusions = $inclStmt->fetchAll();
 
+$googleSyncConfigured = googleSyncIsConfigured();
+$googleConnection = googleSyncGetConnection($userId);
+$googleRedirectUri = googleSyncRedirectUri();
+
 $pageTitle = __('settings_title');
 $activeNav = 'preferences';
 require_once __DIR__ . '/includes/header.php';
@@ -268,6 +274,11 @@ require_once __DIR__ . '/includes/header.php';
 .btn-save-settings:hover { background: #27ae60; }
 .alert-success { background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.9rem;color:#065f46; }
 .alert-error   { background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.9rem;color:#7f1d1d; }
+.google-sync-status { display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-top:1rem; }
+.google-sync-pill { display:inline-flex;align-items:center;gap:.35rem;border-radius:99px;padding:.32rem .75rem;font-size:.8rem;font-weight:700; }
+.google-sync-pill.ok { background:#dcfce7;color:#166534; }
+.google-sync-pill.warn { background:#fef3c7;color:#92400e; }
+.google-sync-meta { font-size:.78rem;color:#64748b;margin-top:.85rem;word-break:break-all; }
 </style>
 
 <div class="settings-wrap">
@@ -284,9 +295,64 @@ require_once __DIR__ . '/includes/header.php';
     <?php if ($saveSuccess): ?>
     <div class="alert-success"><?= __('settings_saved') ?></div>
     <?php endif; ?>
+    <?php if ($googleStatus === 'connected'): ?>
+    <div class="alert-success"><?= __('google_sync_connected') ?></div>
+    <?php elseif ($googleStatus === 'disconnected'): ?>
+    <div class="alert-success"><?= __('google_sync_disconnected') ?></div>
+    <?php elseif ($googleStatus === 'config'): ?>
+    <div class="alert-error"><?= __('google_sync_config_missing') ?></div>
+    <?php elseif ($googleStatus === 'error'): ?>
+    <div class="alert-error"><?= __('google_sync_error') ?></div>
+    <?php endif; ?>
     <?php foreach ($errors as $e): ?>
     <div class="alert-error"><?= htmlspecialchars($e) ?></div>
     <?php endforeach; ?>
+
+    <div class="settings-card">
+        <h3>🔄 <?= __('google_sync_h') ?></h3>
+        <p style="font-size:.82rem;color:#64748b;margin:0;">
+            <?= __('google_sync_intro') ?>
+        </p>
+        <div class="google-sync-status">
+            <?php if ($googleConnection): ?>
+                <span class="google-sync-pill ok">
+                    <i data-lucide="check-circle" style="width:14px;height:14px;"></i>
+                    <?= __('google_sync_status_connected') ?>
+                </span>
+                <span style="font-size:.85rem;color:#374151;">
+                    <?= htmlspecialchars($googleConnection['google_email'] ?: $googleConnection['google_name'] ?: '') ?>
+                </span>
+                <form method="POST" action="<?= BASE_URL ?>/google_disconnect.php" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                    <button type="submit" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;">
+                        <i data-lucide="unlink" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                        <?= __('google_sync_disconnect') ?>
+                    </button>
+                </form>
+            <?php elseif ($googleSyncConfigured): ?>
+                <span class="google-sync-pill warn">
+                    <i data-lucide="plug" style="width:14px;height:14px;"></i>
+                    <?= __('google_sync_status_ready') ?>
+                </span>
+                <a href="<?= BASE_URL ?>/google_connect.php" class="btn btn-primary btn-sm">
+                    <i data-lucide="link" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                    <?= __('google_sync_connect') ?>
+                </a>
+            <?php else: ?>
+                <span class="google-sync-pill warn">
+                    <i data-lucide="settings" style="width:14px;height:14px;"></i>
+                    <?= __('google_sync_status_config') ?>
+                </span>
+                <button type="button" class="btn btn-outline btn-sm" disabled>
+                    <?= __('google_sync_connect') ?>
+                </button>
+            <?php endif; ?>
+        </div>
+        <div class="google-sync-meta">
+            <?= __('google_sync_phase_note') ?><br>
+            <?= __('google_sync_redirect_uri') ?>: <code><?= htmlspecialchars($googleRedirectUri) ?></code>
+        </div>
+    </div>
 
     <form method="POST" id="settings-form">
         <input type="hidden" name="csrf_token"   value="<?= csrfToken() ?>">
