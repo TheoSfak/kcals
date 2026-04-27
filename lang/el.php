@@ -301,6 +301,11 @@ return [
     'plan_unlock_success'   => 'Το γεύμα ξεκλειδώθηκε.',
     'plan_unlock_success_desc' => 'Μπορεί πλέον να αλλάξει στην επόμενη αναδημιουργία.',
     'plan_lock_error'       => 'Δεν ήταν δυνατό να ενημερωθεί το κλείδωμα αυτού του γεύματος.',
+    'plan_day_regenerate_btn' => 'Ανανέωση ημέρας',
+    'plan_day_regenerate_title' => 'Ανανέωση μόνο αυτής της ημέρας',
+    'plan_day_regenerate_success' => 'Η ημέρα %s ανανεώθηκε.',
+    'plan_day_regenerate_success_desc' => 'Τα κλειδωμένα γεύματα έμειναν ίδια και η υπόλοιπη εβδομάδα δεν άλλαξε.',
+    'plan_day_regenerate_error' => 'Δεν ήταν δυνατή η ανανέωση αυτής της ημέρας.',
 
     // ---- Progress ----
     'progress_title'        => 'Πρόοδος – KCALS',

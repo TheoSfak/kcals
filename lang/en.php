@@ -300,6 +300,11 @@ return [
     'plan_unlock_success'   => 'Meal unlocked.',
     'plan_unlock_success_desc' => 'It can change again on the next regeneration.',
     'plan_lock_error'       => 'Could not update this meal lock.',
+    'plan_day_regenerate_btn' => 'Refresh day',
+    'plan_day_regenerate_title' => 'Regenerate only this day',
+    'plan_day_regenerate_success' => '%s refreshed.',
+    'plan_day_regenerate_success_desc' => 'Locked meals stayed the same and the rest of the week was untouched.',
+    'plan_day_regenerate_error' => 'Could not refresh this day.',
 
     // ---- Progress ----
     'progress_title'        => 'Progress – KCALS',

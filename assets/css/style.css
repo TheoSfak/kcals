@@ -516,11 +516,47 @@ select.form-control { cursor: pointer; }
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.75rem;
 }
 
+.day-card-title,
+.day-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.day-card-title {
+    flex-wrap: wrap;
+}
+.day-card-actions {
+    flex-shrink: 0;
+}
 .day-name { font-weight: 700; color: var(--green-dark); font-size: 0.9rem; }
 .day-date { font-size: 0.75rem; color: var(--slate-mid); }
 .day-kcal { font-size: 0.8rem; font-weight: 700; color: var(--slate); }
+.day-regenerate-form {
+    margin: 0;
+}
+.day-regenerate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 26px;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    background: #f0fdf4;
+    color: #166534;
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.18rem 0.5rem;
+    white-space: nowrap;
+}
+.day-regenerate-btn:hover {
+    border-color: var(--green);
+    color: var(--green-dark);
+}
 
 .meal-list { padding: 0.75rem; }
 
@@ -885,6 +921,8 @@ footer {
     .form-grid-2 { grid-template-columns: 1fr; }
     .form-grid-3 { grid-template-columns: 1fr; }
     .plan-grid   { grid-template-columns: 1fr; }
+    .day-card-header { align-items: flex-start; }
+    .day-card-actions { flex-wrap: wrap; justify-content: flex-end; }
     .stat-grid   { grid-template-columns: repeat(2, 1fr); }
     .auth-card   { padding: 1.75rem 1.25rem; }
     /* Hero split → stack */
