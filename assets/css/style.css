@@ -608,6 +608,26 @@ select.form-control { cursor: pointer; }
     font-size: 0.78rem;
     padding: 0.35rem 0.5rem;
 }
+.meal-replace-ingredient {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--slate-mid);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.meal-replace-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--slate-mid);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+.meal-replace-checkbox input {
+    width: 14px;
+    height: 14px;
+}
 .meal-replace-submit {
     min-height: 34px;
     padding: 0.35rem 0.65rem;
