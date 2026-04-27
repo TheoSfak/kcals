@@ -166,6 +166,9 @@ $currentInclusions = $inclStmt->fetchAll();
 $googleSyncConfigured = googleSyncIsConfigured();
 $googleConnection = googleSyncGetConnection($userId);
 $googleRedirectUri = googleSyncRedirectUri();
+$googleRestorePreview = $_SESSION['google_restore_preview'] ?? null;
+$googleRestoreCounts = $_SESSION['google_restore_counts'] ?? null;
+unset($_SESSION['google_restore_counts']);
 
 $pageTitle = __('settings_title');
 $activeNav = 'preferences';
@@ -301,12 +304,20 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert-success"><?= __('google_sync_disconnected') ?></div>
     <?php elseif ($googleStatus === 'backup_ok'): ?>
     <div class="alert-success"><?= __('google_sync_backup_ok') ?></div>
+    <?php elseif ($googleStatus === 'preview_ok'): ?>
+    <div class="alert-success"><?= __('google_sync_preview_ok') ?></div>
+    <?php elseif ($googleStatus === 'restore_ok'): ?>
+    <div class="alert-success"><?= __('google_sync_restore_ok') ?></div>
     <?php elseif ($googleStatus === 'config'): ?>
     <div class="alert-error"><?= __('google_sync_config_missing') ?></div>
     <?php elseif ($googleStatus === 'not_connected'): ?>
     <div class="alert-error"><?= __('google_sync_not_connected') ?></div>
     <?php elseif ($googleStatus === 'backup_error'): ?>
     <div class="alert-error"><?= __('google_sync_backup_error') ?></div>
+    <?php elseif ($googleStatus === 'preview_error'): ?>
+    <div class="alert-error"><?= __('google_sync_preview_error') ?></div>
+    <?php elseif ($googleStatus === 'restore_error'): ?>
+    <div class="alert-error"><?= __('google_sync_restore_error') ?></div>
     <?php elseif ($googleStatus === 'error'): ?>
     <div class="alert-error"><?= __('google_sync_error') ?></div>
     <?php endif; ?>
@@ -333,6 +344,13 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="submit" class="btn btn-primary btn-sm">
                         <i data-lucide="cloud-upload" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
                         <?= __('google_sync_backup_now') ?>
+                    </button>
+                </form>
+                <form method="POST" action="<?= BASE_URL ?>/google_restore_preview.php" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                    <button type="submit" class="btn btn-outline btn-sm">
+                        <i data-lucide="search-check" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                        <?= __('google_sync_check_backup') ?>
                     </button>
                 </form>
                 <form method="POST" action="<?= BASE_URL ?>/google_disconnect.php" style="margin:0;">
@@ -368,6 +386,42 @@ require_once __DIR__ . '/includes/header.php';
             <?php endif; ?>
             <?= __('google_sync_redirect_uri') ?>: <code><?= htmlspecialchars($googleRedirectUri) ?></code>
         </div>
+        <?php if ($googleConnection && is_array($googleRestorePreview)): ?>
+        <div class="google-sync-meta" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;margin-top:1rem;">
+            <strong style="display:block;color:#1e293b;margin-bottom:.35rem;"><?= __('google_sync_preview_title') ?></strong>
+            <?= sprintf(
+                __('google_sync_preview_counts'),
+                htmlspecialchars($googleRestorePreview['version'] ?: '-'),
+                htmlspecialchars($googleRestorePreview['exported_at'] ?: '-'),
+                (int) $googleRestorePreview['progress_count'],
+                (int) $googleRestorePreview['plans_count'],
+                (int) $googleRestorePreview['exclusions_count'],
+                (int) $googleRestorePreview['inclusions_count'],
+                (int) $googleRestorePreview['achievements_count']
+            ) ?>
+            <form method="POST" action="<?= BASE_URL ?>/google_restore.php" style="margin-top:.75rem;">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                <input type="hidden" name="confirm_restore" value="1">
+                <button type="submit" class="btn btn-outline btn-sm" style="color:#b45309;border-color:#f59e0b;"
+                        onclick="return confirm(<?= htmlspecialchars(json_encode(__('google_sync_restore_confirm')), ENT_QUOTES) ?>)">
+                    <i data-lucide="rotate-ccw" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                    <?= __('google_sync_restore_btn') ?>
+                </button>
+            </form>
+        </div>
+        <?php endif; ?>
+        <?php if ($googleConnection && is_array($googleRestoreCounts)): ?>
+        <div class="google-sync-meta" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem;margin-top:1rem;color:#166534;">
+            <?= sprintf(
+                __('google_sync_restore_counts'),
+                (int) $googleRestoreCounts['progress'],
+                (int) $googleRestoreCounts['plans'],
+                (int) $googleRestoreCounts['exclusions'],
+                (int) $googleRestoreCounts['inclusions'],
+                (int) $googleRestoreCounts['achievements']
+            ) ?>
+        </div>
+        <?php endif; ?>
     </div>
 
     <form method="POST" id="settings-form">

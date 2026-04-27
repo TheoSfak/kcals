@@ -217,6 +217,30 @@ function googleSyncHttpGetJson(string $url, string $accessToken): array {
     return $data;
 }
 
+function googleSyncHttpGetRaw(string $url, string $accessToken): string {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $accessToken,
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($body === false) {
+        throw new RuntimeException('Google request failed: ' . $err);
+    }
+    if ($status < 200 || $status >= 300) {
+        throw new RuntimeException('Google Drive download failed.');
+    }
+    return (string) $body;
+}
+
 function googleSyncExchangeCode(string $code): array {
     $cfg = googleSyncConfig();
     return googleSyncHttpPost('https://oauth2.googleapis.com/token', [
@@ -412,6 +436,237 @@ function googleSyncUploadDriveBackup(int $userId, string $accessToken, array $sn
     $metadata['parents'] = ['appDataFolder'];
     $url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime';
     return googleSyncHttpMultipart('POST', $url, $accessToken, $metadata, $json);
+}
+
+function googleSyncFindDriveBackupFile(string $accessToken): ?array {
+    $query = "name = 'kcals-backup.json' and 'appDataFolder' in parents and trashed = false";
+    $url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name,modifiedTime,size)&q='
+        . rawurlencode($query);
+    $result = googleSyncHttpGetJson($url, $accessToken);
+    $files = $result['files'] ?? [];
+    return is_array($files) && !empty($files[0]) && is_array($files[0]) ? $files[0] : null;
+}
+
+function googleSyncDownloadDriveBackup(int $userId): array {
+    if (!googleSyncIsConfigured()) {
+        throw new RuntimeException('Google Sync is not configured.');
+    }
+    $connection = googleSyncGetConnection($userId);
+    if (!$connection) {
+        throw new RuntimeException('Google account is not connected.');
+    }
+
+    $accessToken = googleSyncAccessToken($userId, $connection);
+    $fileId = (string) ($connection['drive_backup_file_id'] ?? '');
+    $file = null;
+    if ($fileId === '') {
+        $file = googleSyncFindDriveBackupFile($accessToken);
+        $fileId = (string) ($file['id'] ?? '');
+        if ($fileId !== '') {
+            googleSyncMarkBackup($userId, (string) ($connection['sync_status'] ?? 'connected'), $fileId, null);
+        }
+    }
+    if ($fileId === '') {
+        throw new RuntimeException('No KCALS Google Drive backup was found.');
+    }
+
+    $body = googleSyncHttpGetRaw(
+        'https://www.googleapis.com/drive/v3/files/' . rawurlencode($fileId) . '?alt=media',
+        $accessToken
+    );
+    $snapshot = json_decode($body, true);
+    if (!is_array($snapshot) || ($snapshot['meta']['format'] ?? '') !== 'kcals-google-drive-backup-v1') {
+        throw new RuntimeException('The Google Drive backup format is not supported.');
+    }
+
+    return [
+        'file' => $file ?: ['id' => $fileId],
+        'snapshot' => $snapshot,
+    ];
+}
+
+function googleSyncBackupSummary(array $snapshot): array {
+    return [
+        'exported_at' => (string) ($snapshot['meta']['exported_at'] ?? ''),
+        'version' => (string) ($snapshot['meta']['version'] ?? ''),
+        'email' => (string) ($snapshot['user']['email'] ?? ''),
+        'progress_count' => count((array) ($snapshot['progress'] ?? [])),
+        'plans_count' => count((array) ($snapshot['weekly_plans'] ?? [])),
+        'exclusions_count' => count((array) ($snapshot['food_exclusions'] ?? [])),
+        'inclusions_count' => count((array) ($snapshot['food_inclusions'] ?? [])),
+        'achievements_count' => count((array) ($snapshot['achievements'] ?? [])),
+    ];
+}
+
+function googleSyncPreviewDriveBackup(int $userId): array {
+    $download = googleSyncDownloadDriveBackup($userId);
+    return googleSyncBackupSummary($download['snapshot']);
+}
+
+function googleSyncValidFoodIds(array $rows): array {
+    $ids = array_values(array_unique(array_filter(array_map(
+        fn($row) => (int) ($row['food_id'] ?? 0),
+        $rows
+    ), fn($id) => $id > 0)));
+    if (!$ids) return [];
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = getDB()->prepare("SELECT id FROM foods WHERE id IN ($ph)");
+    $stmt->execute($ids);
+    return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+function googleSyncRestoreBackupSnapshot(int $userId, array $snapshot): array {
+    if (($snapshot['meta']['format'] ?? '') !== 'kcals-google-drive-backup-v1') {
+        throw new RuntimeException('The Google Drive backup format is not supported.');
+    }
+
+    $db = getDB();
+    $counts = [
+        'profile' => 0,
+        'progress' => 0,
+        'plans' => 0,
+        'exclusions' => 0,
+        'inclusions' => 0,
+        'achievements' => 0,
+    ];
+
+    $db->beginTransaction();
+    try {
+        $user = (array) ($snapshot['user'] ?? []);
+        $profileFields = [
+            'full_name', 'gender', 'birth_date', 'height_cm', 'activity_level', 'diet_type',
+            'food_adventure', 'interview_done', 'allergy_gluten', 'allergy_dairy', 'allergy_nuts',
+            'allergy_eggs', 'allergy_shellfish', 'allergy_soy', 'goal_event_name',
+            'goal_event_date', 'goal_weight_kg', 'tdee_override', 'tdee_recalibrated_at',
+            'tdee_recalibration_delta', 'recharge_day', 'recovery_mode',
+        ];
+        $set = [];
+        $params = [];
+        foreach ($profileFields as $field) {
+            if (array_key_exists($field, $user)) {
+                $set[] = "`$field` = ?";
+                $params[] = $user[$field];
+            }
+        }
+        if ($set) {
+            $params[] = $userId;
+            $db->prepare('UPDATE users SET ' . implode(', ', $set) . ' WHERE id = ?')->execute($params);
+            $counts['profile'] = 1;
+        }
+
+        $progressStmt = $db->prepare('
+            INSERT INTO user_progress
+                (user_id, weight_kg, stress_level, motivation_level, energy_level, notes, entry_date, created_at, sleep_level, workout_type, workout_minutes)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                weight_kg = VALUES(weight_kg),
+                stress_level = VALUES(stress_level),
+                motivation_level = VALUES(motivation_level),
+                energy_level = VALUES(energy_level),
+                notes = VALUES(notes),
+                sleep_level = VALUES(sleep_level),
+                workout_type = VALUES(workout_type),
+                workout_minutes = VALUES(workout_minutes)
+        ');
+        foreach ((array) ($snapshot['progress'] ?? []) as $row) {
+            if (empty($row['entry_date']) || !isset($row['weight_kg'])) continue;
+            $progressStmt->execute([
+                $userId,
+                $row['weight_kg'],
+                $row['stress_level'] ?? 5,
+                $row['motivation_level'] ?? 5,
+                $row['energy_level'] ?? 5,
+                $row['notes'] ?? null,
+                $row['entry_date'],
+                $row['created_at'] ?? date('Y-m-d H:i:s'),
+                $row['sleep_level'] ?? 5,
+                $row['workout_type'] ?? null,
+                $row['workout_minutes'] ?? 0,
+            ]);
+            $counts['progress']++;
+        }
+
+        $planFind = $db->prepare('SELECT id FROM weekly_plans WHERE user_id = ? AND start_date = ? AND end_date = ? AND created_at = ? LIMIT 1');
+        $planInsert = $db->prepare('
+            INSERT INTO weekly_plans (user_id, start_date, end_date, target_calories, zone, plan_data_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ');
+        $planUpdate = $db->prepare('
+            UPDATE weekly_plans
+            SET target_calories = ?, zone = ?, plan_data_json = ?
+            WHERE id = ? AND user_id = ?
+        ');
+        foreach ((array) ($snapshot['weekly_plans'] ?? []) as $row) {
+            if (empty($row['start_date']) || empty($row['end_date']) || empty($row['plan_data_json'])) continue;
+            $createdAt = $row['created_at'] ?? date('Y-m-d H:i:s');
+            $zone = in_array((string) ($row['zone'] ?? 'yellow'), ['green', 'yellow', 'red'], true) ? $row['zone'] : 'yellow';
+            $planFind->execute([$userId, $row['start_date'], $row['end_date'], $createdAt]);
+            $existingId = (int) ($planFind->fetchColumn() ?: 0);
+            if ($existingId > 0) {
+                $planUpdate->execute([
+                    (int) ($row['target_calories'] ?? 0),
+                    $zone,
+                    $row['plan_data_json'],
+                    $existingId,
+                    $userId,
+                ]);
+            } else {
+                $planInsert->execute([
+                    $userId,
+                    $row['start_date'],
+                    $row['end_date'],
+                    (int) ($row['target_calories'] ?? 0),
+                    $zone,
+                    $row['plan_data_json'],
+                    $createdAt,
+                ]);
+            }
+            $counts['plans']++;
+        }
+
+        $validExclusions = googleSyncValidFoodIds((array) ($snapshot['food_exclusions'] ?? []));
+        if ($validExclusions) {
+            $stmt = $db->prepare('INSERT IGNORE INTO user_food_exclusions (user_id, food_id) VALUES (?, ?)');
+            foreach ($validExclusions as $foodId) {
+                $stmt->execute([$userId, $foodId]);
+                $counts['exclusions']++;
+            }
+        }
+
+        $validInclusions = googleSyncValidFoodIds((array) ($snapshot['food_inclusions'] ?? []));
+        if ($validInclusions) {
+            $stmt = $db->prepare('INSERT IGNORE INTO user_food_inclusions (user_id, food_id) VALUES (?, ?)');
+            foreach ($validInclusions as $foodId) {
+                $stmt->execute([$userId, $foodId]);
+                $counts['inclusions']++;
+            }
+        }
+
+        if (googleSyncTableExists('user_achievements')) {
+            $stmt = $db->prepare('INSERT IGNORE INTO user_achievements (user_id, achievement_slug, earned_at) VALUES (?, ?, ?)');
+            foreach ((array) ($snapshot['achievements'] ?? []) as $row) {
+                $slug = (string) ($row['achievement_slug'] ?? '');
+                if ($slug === '') continue;
+                $stmt->execute([$userId, $slug, $row['earned_at'] ?? date('Y-m-d H:i:s')]);
+                $counts['achievements']++;
+            }
+        }
+
+        $db->commit();
+        return $counts;
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+
+function googleSyncRestoreDriveBackup(int $userId): array {
+    $download = googleSyncDownloadDriveBackup($userId);
+    $counts = googleSyncRestoreBackupSnapshot($userId, $download['snapshot']);
+    getDB()->prepare('UPDATE google_accounts SET sync_status = ?, last_sync_error = NULL, updated_at = NOW() WHERE user_id = ?')
+        ->execute(['restore_ok', $userId]);
+    return $counts;
 }
 
 function googleSyncMarkBackup(int $userId, string $status, ?string $fileId = null, ?string $error = null): void {
