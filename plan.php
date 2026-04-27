@@ -131,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         foreach ($dayNames as $day) {
             $dayMeals   = [];
             $dayFoodIds = []; // Food IDs used in earlier slots today (avoid same protein lunch+dinner)
+            $dayHasIncludedFood = false;
 
             // Social Buffer: adjust per-day target (−150 Mon–Fri, +750 Sat, unchanged Sun)
             $dayTarget = applySocialBuffer($targetCalories, $day);
@@ -160,14 +161,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                 ];
                 $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $profile);
                 $meal = null;
-                foreach ($remainingIncludeIds as $includeIndex => $includeId) {
-                    $candidateMeal = $builder->buildMealWithFood($slot, $kcalTarget, (int) $includeId, $usedFoodIds, $dayFoodIds);
-                    if ($candidateMeal !== null) {
-                        $meal = $candidateMeal;
-                        $includedUsedIds[] = (int) $includeId;
-                        unset($remainingIncludeIds[$includeIndex]);
-                        $remainingIncludeIds = array_values($remainingIncludeIds);
-                        break;
+                if (!$dayHasIncludedFood) {
+                    foreach ($remainingIncludeIds as $includeIndex => $includeId) {
+                        $candidateMeal = $builder->buildMealWithFood($slot, $kcalTarget, (int) $includeId, $usedFoodIds, $dayFoodIds);
+                        if ($candidateMeal !== null) {
+                            $meal = $candidateMeal;
+                            $includedUsedIds[] = (int) $includeId;
+                            $dayHasIncludedFood = true;
+                            unset($remainingIncludeIds[$includeIndex]);
+                            $remainingIncludeIds = array_values($remainingIncludeIds);
+                            break;
+                        }
                     }
                 }
                 if ($meal === null) {
@@ -178,6 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     if ($c['food_id'] > 0) {
                         $usedFoodIds[] = $c['food_id'];
                         $dayFoodIds[]  = $c['food_id'];
+                        if (in_array((int) $c['food_id'], $includedIds, true)) {
+                            $dayHasIncludedFood = true;
+                        }
                     }
                 }
             }
@@ -187,12 +194,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         // Strict second pass: if any saved must-include food did not land naturally
         // or during the first forced pass, replace an ordinary compatible meal.
         $foodIdsInPlan = [];
-        foreach ($planData as $dayMeals) {
+        $daysWithIncludedFood = [];
+        foreach ($planData as $day => $dayMeals) {
             foreach ($dayMeals as $meal) {
                 foreach (($meal['components'] ?? []) as $component) {
                     $componentFoodId = (int) ($component['food_id'] ?? 0);
                     if ($componentFoodId > 0) {
                         $foodIdsInPlan[] = $componentFoodId;
+                    }
+                    if (in_array($componentFoodId, $includedIds, true)) {
+                        $daysWithIncludedFood[$day] = true;
                     }
                 }
             }
@@ -202,38 +213,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
 
         foreach ($missingIncludeIds as $missingIncludeId) {
             $placed = false;
-            foreach ($planData as $day => &$dayMeals) {
-                foreach ($dayMeals as $mealIndex => $existingMeal) {
-                    $existingFoodIds = array_map(
-                        fn($component) => (int) ($component['food_id'] ?? 0),
-                        $existingMeal['components'] ?? []
-                    );
-                    if (!empty(array_intersect($existingFoodIds, $includedIds))) {
+            foreach ([true, false] as $preferOpenDay) {
+                foreach ($planData as $day => &$dayMeals) {
+                    if ($preferOpenDay && !empty($daysWithIncludedFood[$day])) {
                         continue;
                     }
 
-                    $slot = $existingMeal['slot'] ?? 'lunch';
-                    $schedule = $planSchedule[$day][$slot] ?? null;
-                    if (!$schedule) {
-                        continue;
-                    }
+                    foreach ($dayMeals as $mealIndex => $existingMeal) {
+                        $existingFoodIds = array_map(
+                            fn($component) => (int) ($component['food_id'] ?? 0),
+                            $existingMeal['components'] ?? []
+                        );
+                        if (!empty(array_intersect($existingFoodIds, $includedIds))) {
+                            continue;
+                        }
 
-                    $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $schedule['profile']);
-                    $replacement = $builder->buildMealWithFood(
-                        $slot,
-                        (int) $schedule['target'],
-                        (int) $missingIncludeId,
-                        [],
-                        []
-                    );
-                    if ($replacement === null) {
-                        continue;
-                    }
+                        $slot = $existingMeal['slot'] ?? 'lunch';
+                        $schedule = $planSchedule[$day][$slot] ?? null;
+                        if (!$schedule) {
+                            continue;
+                        }
 
-                    $dayMeals[$mealIndex] = $replacement;
-                    $placed = true;
-                    break 2;
+                        $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $schedule['profile']);
+                        $replacement = $builder->buildMealWithFood(
+                            $slot,
+                            (int) $schedule['target'],
+                            (int) $missingIncludeId,
+                            [],
+                            []
+                        );
+                        if ($replacement === null) {
+                            continue;
+                        }
+
+                        $dayMeals[$mealIndex] = $replacement;
+                        $daysWithIncludedFood[$day] = true;
+                        $placed = true;
+                        break 3;
+                    }
                 }
+                unset($dayMeals);
             }
             unset($dayMeals);
 

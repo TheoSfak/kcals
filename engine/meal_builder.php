@@ -88,6 +88,7 @@ class MealBuilder
 
         $foodType = $food['food_type'] ?? '';
         $share = match ($foodType) {
+            'mixed'   => 0.72,
             'protein' => ($slot === 'breakfast' || $slot === 'snack') ? 0.42 : 0.48,
             'carb'    => ($slot === 'snack') ? 0.45 : 0.38,
             'dairy'   => 0.42,
@@ -403,6 +404,10 @@ class MealBuilder
         }
 
         $slots = array_map('trim', explode(',', (string) ($food['meal_slots'] ?? '')));
+        if ($this->isSubstantialPreparedMain($food)) {
+            return $slot === 'lunch' && (in_array('lunch', $slots, true) || in_array('dinner', $slots, true));
+        }
+
         if (!in_array($slot, $slots, true)) {
             return false;
         }
@@ -419,6 +424,21 @@ class MealBuilder
         }
 
         return !$this->isDisliked($food);
+    }
+
+    private function isSubstantialPreparedMain(array $food): bool
+    {
+        if (($food['food_type'] ?? '') !== 'mixed') {
+            return false;
+        }
+
+        $slots = array_map('trim', explode(',', (string) ($food['meal_slots'] ?? '')));
+        if (in_array('breakfast', $slots, true) || in_array('snack', $slots, true)) {
+            return false;
+        }
+
+        return (int) ($food['prep_minutes'] ?? 0) >= 35
+            && (float) ($food['cal_per_100g'] ?? 0) >= 140;
     }
 
     private function foodMatchesDiet(array $food): bool
