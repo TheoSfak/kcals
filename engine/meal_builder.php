@@ -98,6 +98,7 @@ class MealBuilder
         };
 
         $forced = $this->calc($food, $targetKcal * $share);
+        $forced['is_forced_include'] = true;
         $excludeForced = array_merge($usedWeek, $usedToday, [$foodId]);
         $baseTarget = max(120, $targetKcal - (int) $forced['cal']);
         $baseMeal = $this->buildMeal($slot, $baseTarget, $excludeForced, $excludeForced);
@@ -497,11 +498,16 @@ class MealBuilder
     {
         if (empty($components)) return ['Γεύμα', 'Meal'];
 
-        $protein = $carb = $veg1 = $veg2 = $fruit = $dairy = $fat = null;
+        $protein = $carb = $veg1 = $veg2 = $fruit = $dairy = $fat = $mixed = $forcedInclude = null;
         foreach ($components as $c) {
+            if (!empty($c['is_forced_include']) && !$forcedInclude) {
+                $forcedInclude = $c;
+            }
             switch ($c['food_type']) {
                 case 'protein':
                     $protein = $protein ?? $c; break;
+                case 'mixed':
+                    $mixed = $mixed ?? $c; break;
                 case 'carb':
                     $carb    = $carb    ?? $c; break;
                 case 'vegetable':
@@ -518,7 +524,7 @@ class MealBuilder
         }
 
         if ($slot === 'breakfast') {
-            $main  = $carb ?? $dairy ?? $protein;
+            $main  = $forcedInclude ?? $mixed ?? $carb ?? $dairy ?? $protein;
             $with  = ($protein && $protein !== $main)
                         ? $protein
                         : (($dairy && $dairy !== $main) ? $dairy : null);
@@ -531,16 +537,24 @@ class MealBuilder
 
         } elseif ($slot === 'snack') {
             $visible = array_slice($components, 0, 2);
+            if ($forcedInclude && !in_array($forcedInclude, $visible, true)) {
+                array_unshift($visible, $forcedInclude);
+                $visible = array_slice($visible, 0, 2);
+            }
             $nameEl  = implode(' με ',   array_column($visible, 'name_el'));
             $nameEn  = implode(' with ', array_column($visible, 'name_en'));
 
         } else {
             // lunch / dinner: protein-centric
-            $main = $protein ?? $dairy ?? $carb;
+            $main = $forcedInclude ?? $mixed ?? $protein ?? $dairy ?? $carb;
             if (!$main) return ['Γεύμα', 'Meal'];
 
             $nameEl = $main['name_el'];
             $nameEn = $main['name_en'];
+            if ($forcedInclude && $main === $forcedInclude && $protein && $protein !== $main && ($main['food_type'] ?? '') !== 'mixed') {
+                $nameEl .= ' με '    . $protein['name_el'];
+                $nameEn .= ' with '  . $protein['name_en'];
+            }
             if ($carb && $carb !== $main) {
                 $nameEl .= ' με '    . $carb['name_el'];
                 $nameEn .= ' with '  . $carb['name_en'];
