@@ -210,6 +210,32 @@ function googleSyncHttpJsonWithStatus(string $method, string $url, string $acces
     ];
 }
 
+function googleSyncHttpNoBodyWithStatus(string $method, string $url, string $accessToken): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $accessToken,
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($body === false) {
+        throw new RuntimeException('Google request failed: ' . $err);
+    }
+    $data = $body !== '' ? json_decode($body, true) : [];
+    return [
+        'status' => $status,
+        'data' => is_array($data) ? $data : [],
+    ];
+}
+
 function googleSyncHttpMultipart(string $method, string $url, string $accessToken, array $metadata, string $jsonBody): array {
     $boundary = 'kcals_' . bin2hex(random_bytes(12));
     $body = "--$boundary\r\n"
@@ -884,6 +910,21 @@ function googleSyncUpdateCalendarEvent(string $accessToken, string $calendarId, 
     return $result['data'];
 }
 
+function googleSyncDeleteCalendarEvent(string $accessToken, string $calendarId, string $eventId): string {
+    $result = googleSyncHttpNoBodyWithStatus(
+        'DELETE',
+        googleSyncCalendarApiUrl($calendarId, $eventId) . '?sendUpdates=none',
+        $accessToken
+    );
+    if ($result['status'] === 404 || $result['status'] === 410) {
+        return 'missing';
+    }
+    if ($result['status'] < 200 || $result['status'] >= 300) {
+        throw new RuntimeException('Google Calendar event deletion failed.');
+    }
+    return 'deleted';
+}
+
 function googleSyncUpsertCalendarEvent(int $userId, int $weeklyPlanId, string $accessToken, string $calendarId, array $event): string {
     $db = getDB();
     $existingStmt = $db->prepare('
@@ -933,7 +974,7 @@ function googleSyncUpsertCalendarEvent(int $userId, int $weeklyPlanId, string $a
     return $updatedExisting ? 'updated' : 'created';
 }
 
-function googleSyncCalendarNow(int $userId): array {
+function googleSyncCalendarReadyContext(int $userId): array {
     if (!googleSyncIsConfigured()) {
         throw new RuntimeException('Google Sync is not configured.');
     }
@@ -944,13 +985,18 @@ function googleSyncCalendarNow(int $userId): array {
     if (!googleSyncHasCalendarScope($connection)) {
         throw new RuntimeException('Google Calendar permission is missing.');
     }
+    $accessToken = googleSyncAccessToken($userId, $connection);
+    $calendarId = (string) ($connection['calendar_id'] ?? 'primary') ?: 'primary';
+    return [$connection, $accessToken, $calendarId];
+}
+
+function googleSyncCalendarNow(int $userId): array {
+    [$connection, $accessToken, $calendarId] = googleSyncCalendarReadyContext($userId);
     $plan = googleSyncLatestWeeklyPlan($userId);
     if (!$plan) {
         throw new RuntimeException('No weekly plan found.');
     }
 
-    $accessToken = googleSyncAccessToken($userId, $connection);
-    $calendarId = (string) ($connection['calendar_id'] ?? 'primary') ?: 'primary';
     $reminderMode = (string) ($connection['calendar_reminder_mode'] ?? 'previous_evening');
     if (!in_array($reminderMode, googleSyncCalendarReminderModes(), true)) {
         $reminderMode = 'previous_evening';
@@ -972,6 +1018,59 @@ function googleSyncCalendarNow(int $userId): array {
         WHERE user_id = ?
     ')->execute(['calendar_ok', $userId]);
     return $counts;
+}
+
+function googleSyncCalendarStoredEvents(int $userId): array {
+    $stmt = getDB()->prepare('
+        SELECT id, google_event_id
+        FROM google_calendar_events
+        WHERE user_id = ? AND event_type = ?
+        ORDER BY event_date, id
+    ');
+    $stmt->execute([$userId, 'meal_prep']);
+    return $stmt->fetchAll();
+}
+
+function googleSyncCalendarRemoveEvents(int $userId): array {
+    [, $accessToken, $calendarId] = googleSyncCalendarReadyContext($userId);
+    $rows = googleSyncCalendarStoredEvents($userId);
+    $counts = ['deleted' => 0, 'missing' => 0, 'total' => 0];
+    if (!$rows) {
+        getDB()->prepare('
+            UPDATE google_accounts
+            SET sync_status = ?, calendar_last_sync_at = NULL, last_sync_error = NULL, updated_at = NOW()
+            WHERE user_id = ?
+        ')->execute(['calendar_cleared', $userId]);
+        return $counts;
+    }
+
+    $db = getDB();
+    $deleteLocal = $db->prepare('DELETE FROM google_calendar_events WHERE id = ? AND user_id = ?');
+    foreach ($rows as $row) {
+        $eventId = (string) ($row['google_event_id'] ?? '');
+        $result = $eventId === ''
+            ? 'missing'
+            : googleSyncDeleteCalendarEvent($accessToken, $calendarId, $eventId);
+        $counts[$result]++;
+        $counts['total']++;
+        $deleteLocal->execute([(int) $row['id'], $userId]);
+    }
+
+    $db->prepare('
+        UPDATE google_accounts
+        SET sync_status = ?, calendar_last_sync_at = NULL, last_sync_error = NULL, updated_at = NOW()
+        WHERE user_id = ?
+    ')->execute(['calendar_cleared', $userId]);
+    return $counts;
+}
+
+function googleSyncCalendarCleanResync(int $userId): array {
+    $removed = googleSyncCalendarRemoveEvents($userId);
+    $synced = googleSyncCalendarNow($userId);
+    return [
+        'removed' => $removed,
+        'synced' => $synced,
+    ];
 }
 
 function googleSyncMarkBackup(int $userId, string $status, ?string $fileId = null, ?string $error = null): void {

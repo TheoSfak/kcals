@@ -169,6 +169,8 @@ $googleRedirectUri = googleSyncRedirectUri();
 $googleRestorePreview = $_SESSION['google_restore_preview'] ?? null;
 $googleRestoreCounts = $_SESSION['google_restore_counts'] ?? null;
 $googleCalendarSyncCounts = $_SESSION['google_calendar_sync_counts'] ?? null;
+$googleCalendarCleanupCounts = $_SESSION['google_calendar_cleanup_counts'] ?? null;
+$googleCalendarResyncCounts = $_SESSION['google_calendar_resync_counts'] ?? null;
 $googleCalendarReady = googleSyncHasCalendarScope($googleConnection);
 $googleCalendarReminderMode = (string) ($googleConnection['calendar_reminder_mode'] ?? 'previous_evening');
 if (!in_array($googleCalendarReminderMode, googleSyncCalendarReminderModes(), true)) {
@@ -176,6 +178,8 @@ if (!in_array($googleCalendarReminderMode, googleSyncCalendarReminderModes(), tr
 }
 unset($_SESSION['google_restore_counts']);
 unset($_SESSION['google_calendar_sync_counts']);
+unset($_SESSION['google_calendar_cleanup_counts']);
+unset($_SESSION['google_calendar_resync_counts']);
 
 $pageTitle = __('settings_title');
 $activeNav = 'preferences';
@@ -319,6 +323,10 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert-success"><?= __('google_calendar_saved') ?></div>
     <?php elseif ($googleStatus === 'calendar_sync_ok'): ?>
     <div class="alert-success"><?= __('google_calendar_sync_ok') ?></div>
+    <?php elseif ($googleStatus === 'calendar_removed'): ?>
+    <div class="alert-success"><?= __('google_calendar_removed') ?></div>
+    <?php elseif ($googleStatus === 'calendar_resync_ok'): ?>
+    <div class="alert-success"><?= __('google_calendar_resync_ok') ?></div>
     <?php elseif ($googleStatus === 'config'): ?>
     <div class="alert-error"><?= __('google_sync_config_missing') ?></div>
     <?php elseif ($googleStatus === 'not_connected'): ?>
@@ -333,6 +341,8 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert-error"><?= __('google_calendar_reconnect_needed') ?></div>
     <?php elseif ($googleStatus === 'calendar_sync_error'): ?>
     <div class="alert-error"><?= __('google_calendar_sync_error') ?></div>
+    <?php elseif ($googleStatus === 'calendar_cleanup_error'): ?>
+    <div class="alert-error"><?= __('google_calendar_cleanup_error') ?></div>
     <?php elseif ($googleStatus === 'error'): ?>
     <div class="alert-error"><?= __('google_sync_error') ?></div>
     <?php endif; ?>
@@ -420,6 +430,24 @@ require_once __DIR__ . '/includes/header.php';
                         <?= __('google_calendar_sync_now') ?>
                     </button>
                 </form>
+                <form method="POST" action="<?= BASE_URL ?>/google_calendar_cleanup.php" style="display:inline-flex;margin-left:.5rem;"
+                      onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('google_calendar_resync_confirm')), ENT_QUOTES) ?>)">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                    <input type="hidden" name="calendar_action" value="resync">
+                    <button type="submit" class="btn btn-outline btn-sm">
+                        <i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                        <?= __('google_calendar_resync_now') ?>
+                    </button>
+                </form>
+                <form method="POST" action="<?= BASE_URL ?>/google_calendar_cleanup.php" style="display:inline-flex;margin-left:.5rem;"
+                      onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('google_calendar_remove_confirm')), ENT_QUOTES) ?>)">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                    <input type="hidden" name="calendar_action" value="remove">
+                    <button type="submit" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;">
+                        <i data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
+                        <?= __('google_calendar_remove_now') ?>
+                    </button>
+                </form>
             <?php elseif ($googleConnection): ?>
                 <span class="google-sync-pill warn">
                     <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
@@ -447,6 +475,27 @@ require_once __DIR__ . '/includes/header.php';
                     (int) $googleCalendarSyncCounts['created'],
                     (int) $googleCalendarSyncCounts['updated'],
                     (int) $googleCalendarSyncCounts['total']
+                ) ?>
+            </p>
+            <?php endif; ?>
+            <?php if ($googleConnection && is_array($googleCalendarCleanupCounts)): ?>
+            <p style="font-size:.78rem;color:#166534;margin:.7rem 0 0;">
+                <?= sprintf(
+                    __('google_calendar_cleanup_counts'),
+                    (int) $googleCalendarCleanupCounts['deleted'],
+                    (int) $googleCalendarCleanupCounts['missing'],
+                    (int) $googleCalendarCleanupCounts['total']
+                ) ?>
+            </p>
+            <?php endif; ?>
+            <?php if ($googleConnection && is_array($googleCalendarResyncCounts)): ?>
+            <p style="font-size:.78rem;color:#166534;margin:.7rem 0 0;">
+                <?= sprintf(
+                    __('google_calendar_resync_counts'),
+                    (int) $googleCalendarResyncCounts['removed']['deleted'],
+                    (int) $googleCalendarResyncCounts['removed']['missing'],
+                    (int) $googleCalendarResyncCounts['synced']['created'],
+                    (int) $googleCalendarResyncCounts['synced']['updated']
                 ) ?>
             </p>
             <?php endif; ?>
