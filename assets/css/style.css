@@ -555,6 +555,9 @@ select.form-control { cursor: pointer; }
 .meal-item-replaced {
     background: #f8fafc;
 }
+.meal-item-locked {
+    background: #f7fee7;
+}
 .meal-replaced-badge {
     display: inline-flex;
     align-items: center;
@@ -563,6 +566,20 @@ select.form-control { cursor: pointer; }
     border-radius: 999px;
     background: #dbeafe;
     color: #1d4ed8;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.meal-locked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.18rem;
+    margin-left: 0.35rem;
+    padding: 0.06rem 0.35rem;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
     font-size: 0.62rem;
     font-weight: 800;
     letter-spacing: 0;
@@ -635,7 +652,11 @@ select.form-control { cursor: pointer; }
 .meal-undo-form {
     margin: 0;
 }
-.meal-undo-btn {
+.meal-lock-form {
+    margin: 0;
+}
+.meal-undo-btn,
+.meal-lock-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
@@ -648,7 +669,11 @@ select.form-control { cursor: pointer; }
     font-weight: 700;
     padding: 0;
 }
-.meal-undo-btn:hover {
+.meal-lock-btn.is-locked {
+    color: #166534;
+}
+.meal-undo-btn:hover,
+.meal-lock-btn:hover {
     color: var(--green-dark);
 }
 

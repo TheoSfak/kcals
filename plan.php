@@ -148,6 +148,50 @@ function kcalsPlanMealScoredFamilies(array $meal, array $mainCookingFamilies): a
     return array_keys($families);
 }
 
+function kcalsPlanLockedMealsByDaySlot($planData): array {
+    if (!is_array($planData)) {
+        return [];
+    }
+
+    $lockedMeals = [];
+    foreach ($planData as $dayName => $dayMeals) {
+        if (!is_array($dayMeals)) {
+            continue;
+        }
+        foreach ($dayMeals as $mealIndex => $meal) {
+            if (!is_array($meal) || empty($meal['locked'])) {
+                continue;
+            }
+            $slot = (string) ($meal['slot'] ?? $meal['category'] ?? '');
+            if (!in_array($slot, ['breakfast', 'lunch', 'dinner', 'snack'], true)) {
+                $slot = ['breakfast', 'lunch', 'dinner', 'snack'][(int) $mealIndex] ?? 'lunch';
+            }
+            $lockedMeals[(string) $dayName][$slot] = $meal;
+        }
+    }
+
+    return $lockedMeals;
+}
+
+function kcalsPlanDayHasOtherLockedMainCooking(array $lockedMealsForDay, string $slot, array $mainCookingFamilies): bool {
+    if (!in_array($slot, ['lunch', 'dinner'], true)) {
+        return false;
+    }
+
+    foreach ($lockedMealsForDay as $lockedSlot => $lockedMeal) {
+        if (
+            $lockedSlot !== $slot
+            && in_array((string) $lockedSlot, ['lunch', 'dinner'], true)
+            && is_array($lockedMeal)
+            && kcalsPlanMealHasMainCooking($lockedMeal, $mainCookingFamilies)
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function kcalsPlanReplacementContext(array $planData, string $skipDay, int $skipIndex, array $mainCookingFamilies): array {
     $usedWeekIds = [];
     $usedTodayIds = [];
@@ -222,6 +266,8 @@ $generated = false;
 $genError  = '';
 $replaceSuccess = false;
 $undoSuccess = false;
+$lockSuccess = false;
+$unlockSuccess = false;
 $replaceWarning = '';
 $includedUsedNames = [];
 $includedSkippedNames = [];
@@ -244,6 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'undo_
             || !is_array($planDataForUndo)
             || !isset($planDataForUndo[$dayName][$mealIndex]['previous_meal'])
             || !is_array($planDataForUndo[$dayName][$mealIndex]['previous_meal'])
+            || !empty($planDataForUndo[$dayName][$mealIndex]['locked'])
         ) {
             $genError = __('plan_undo_error');
         } else {
@@ -255,6 +302,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'undo_
                 $userId,
             ]);
             $undoSuccess = true;
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_lock_meal') {
+    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
+        $genError = __('err_plan_invalid');
+    } else {
+        $planId = (int) ($_POST['plan_id'] ?? 0);
+        $dayName = (string) ($_POST['day_name'] ?? '');
+        $mealIndex = (int) ($_POST['meal_index'] ?? -1);
+        $lockState = (int) ($_POST['lock_state'] ?? 0);
+
+        $planRowStmt = $db->prepare('SELECT * FROM weekly_plans WHERE id = ? AND user_id = ? LIMIT 1');
+        $planRowStmt->execute([$planId, $userId]);
+        $planRow = $planRowStmt->fetch();
+        $planDataForLock = $planRow ? json_decode($planRow['plan_data_json'], true) : null;
+
+        if (
+            !$planRow
+            || !is_array($planDataForLock)
+            || !isset($planDataForLock[$dayName][$mealIndex])
+            || !is_array($planDataForLock[$dayName][$mealIndex])
+        ) {
+            $genError = __('plan_lock_error');
+        } else {
+            if ($lockState === 1) {
+                $planDataForLock[$dayName][$mealIndex]['locked'] = true;
+                $planDataForLock[$dayName][$mealIndex]['locked_at'] = date('c');
+                $lockSuccess = true;
+            } else {
+                unset($planDataForLock[$dayName][$mealIndex]['locked'], $planDataForLock[$dayName][$mealIndex]['locked_at']);
+                $unlockSuccess = true;
+            }
+
+            $upd = $db->prepare('UPDATE weekly_plans SET plan_data_json = ? WHERE id = ? AND user_id = ?');
+            $upd->execute([
+                json_encode($planDataForLock, JSON_UNESCAPED_UNICODE),
+                $planId,
+                $userId,
+            ]);
         }
     }
 }
@@ -288,6 +376,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repla
             $genError = __('plan_replace_error');
         } else {
             $oldMeal = $planDataForReplace[$dayName][$mealIndex];
+            if (!empty($oldMeal['locked'])) {
+                $genError = __('plan_replace_locked_error');
+            }
             $slot = in_array($slot, ['breakfast', 'lunch', 'dinner', 'snack'], true)
                 ? $slot
                 : (string) ($oldMeal['slot'] ?? 'lunch');
@@ -469,6 +560,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         // Smart food-based meal builder (instantiated per-day to allow per-day profile tweaks)
         require_once __DIR__ . '/engine/meal_builder.php';
 
+        $lockedPlanStmt = $db->prepare('
+            SELECT plan_data_json
+            FROM weekly_plans
+            WHERE user_id = ?
+            ORDER BY created_at DESC LIMIT 1
+        ');
+        $lockedPlanStmt->execute([$userId]);
+        $lockedPlanRow = $lockedPlanStmt->fetch();
+        $lockedPlanData = $lockedPlanRow ? json_decode($lockedPlanRow['plan_data_json'], true) : null;
+        $lockedMealsByDaySlot = kcalsPlanLockedMealsByDaySlot($lockedPlanData);
+
         $mainCookingFamilies = ['heavy_mixed', 'fish', 'shellfish', 'red_meat', 'pork', 'lamb', 'poultry'];
         $mealHasMainCooking = function (array $meal) use ($mainCookingFamilies): bool {
             foreach (($meal['components'] ?? []) as $component) {
@@ -537,6 +639,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                 'dinner'    => (int) round($dayTarget * 0.30),
                 'snack'     => (int) round($dayTarget * 0.10),
             ];
+            $lockedMealsForDay = $lockedMealsByDaySlot[$day] ?? [];
 
             foreach ($mealTargets as $slot => $kcalTarget) {
                 $slotProfile = $profile;
@@ -547,7 +650,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     $slotProfile['complex_carb_bias'] = false;
                 }
 
-                if ($slot === 'dinner' && $dayHasMainCooking) {
+                $otherLockedMainCooking = kcalsPlanDayHasOtherLockedMainCooking($lockedMealsForDay, $slot, $mainCookingFamilies);
+                if (($slot === 'dinner' && $dayHasMainCooking) || $otherLockedMainCooking) {
                     $slotProfile['quick_main_only'] = true;
                     $slotProfile['max_prep_minutes'] = 20;
                     $slotProfile['avoid_meal_families'] = $mainCookingFamilies;
@@ -559,10 +663,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     'target'  => $kcalTarget,
                     'profile' => $slotProfile,
                 ];
-                $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $slotProfile);
                 $meal = null;
+                $lockedMeal = $lockedMealsForDay[$slot] ?? null;
+                if (is_array($lockedMeal) && !empty($lockedMeal['components'])) {
+                    $meal = $lockedMeal;
+                    $meal['locked'] = true;
+                    unset($meal['previous_meal']);
+                }
+
+                $builder = null;
                 $reserveDinnerForInclude = false;
-                if (!$dayHasIncludedFood) {
+                if ($meal === null) {
+                    $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $slotProfile);
+                }
+                if ($meal === null && !$dayHasIncludedFood) {
                     foreach ($remainingIncludeIds as $includeIndex => $includeId) {
                         $candidateMeal = $builder->buildMealWithFood($slot, $kcalTarget, (int) $includeId, $usedFoodIds, $dayFoodIds);
                         if ($candidateMeal !== null) {
@@ -624,6 +738,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                         }
                         if (in_array((int) $c['food_id'], $includedIds, true)) {
                             $dayHasIncludedFood = true;
+                            $includeIndex = array_search((int) $c['food_id'], $remainingIncludeIds, true);
+                            if ($includeIndex !== false) {
+                                $includedUsedIds[] = (int) $c['food_id'];
+                                unset($remainingIncludeIds[$includeIndex]);
+                                $remainingIncludeIds = array_values($remainingIncludeIds);
+                            }
                         }
                     }
                 }
@@ -660,6 +780,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     }
 
                     foreach ($dayMeals as $mealIndex => $existingMeal) {
+                        if (!empty($existingMeal['locked'])) {
+                            continue;
+                        }
+
                         $existingFoodIds = array_map(
                             fn($component) => (int) ($component['food_id'] ?? 0),
                             $existingMeal['components'] ?? []
@@ -712,7 +836,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         ');
         $ins->execute([
             $userId, $startDate, $endDate,
-            $targetCalories, $zone, json_encode($planData)
+            $targetCalories, $zone, json_encode($planData, JSON_UNESCAPED_UNICODE)
         ]);
 
         $generated = true;
@@ -825,6 +949,16 @@ require_once __DIR__ . '/includes/header.php';
         <strong><?= __('plan_undo_success') ?></strong> <?= __('plan_undo_success_desc') ?>
     </div>
     <?php endif; ?>
+    <?php if ($lockSuccess): ?>
+    <div class="alert alert-success" style="margin-bottom:1rem;">
+        <strong><?= __('plan_lock_success') ?></strong> <?= __('plan_lock_success_desc') ?>
+    </div>
+    <?php endif; ?>
+    <?php if ($unlockSuccess): ?>
+    <div class="alert alert-success" style="margin-bottom:1rem;">
+        <strong><?= __('plan_unlock_success') ?></strong> <?= __('plan_unlock_success_desc') ?>
+    </div>
+    <?php endif; ?>
     <?php if ($replaceWarning): ?>
     <div class="alert" style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; margin-bottom:1rem;">
         <?= $replaceWarning ?>
@@ -934,17 +1068,22 @@ require_once __DIR__ . '/includes/header.php';
                         'quick' => __('plan_replace_quick'),
                         'simple' => __('plan_replace_simple'),
                         'protein' => __('plan_replace_protein'),
+                        'avoid_food' => __('plan_replace_avoid_food'),
                     ];
                     $replaceReason = (string) ($meal['replace_reason'] ?? 'new');
                     $replaceReasonLabel = $replaceReasonLabels[$replaceReason] ?? __('plan_replace_new');
+                    $mealLocked = !empty($meal['locked']);
                 ?>
-                <div class="meal-item<?= !empty($meal['replaced']) ? ' meal-item-replaced' : '' ?>">
+                <div class="meal-item<?= !empty($meal['replaced']) ? ' meal-item-replaced' : '' ?><?= $mealLocked ? ' meal-item-locked' : '' ?>">
                     <div class="meal-dot <?= htmlspecialchars($mSlot) ?>"></div>
                     <div class="meal-info">
                         <div class="meal-type">
                             <?= __('meal_slot_' . $mSlot) ?>
                             <?php if (!empty($meal['replaced'])): ?>
                             <span class="meal-replaced-badge"><?= __('plan_replace_badge') ?>: <?= htmlspecialchars($replaceReasonLabel) ?></span>
+                            <?php endif; ?>
+                            <?php if ($mealLocked): ?>
+                            <span class="meal-locked-badge"><i data-lucide="lock" style="width:11px;height:11px;"></i><?= __('plan_locked_badge') ?></span>
                             <?php endif; ?>
                         </div>
                         <div class="meal-name" title="<?= htmlspecialchars($mName) ?>">
@@ -963,6 +1102,19 @@ require_once __DIR__ . '/includes/header.php';
                         <?php endif; ?>
                         <?php if ($plan): ?>
                         <div class="meal-actions no-print">
+                        <form method="POST" action="<?= BASE_URL ?>/plan.php" class="meal-lock-form">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                            <input type="hidden" name="action" value="toggle_lock_meal">
+                            <input type="hidden" name="plan_id" value="<?= (int) $plan['id'] ?>">
+                            <input type="hidden" name="day_name" value="<?= htmlspecialchars($dayName) ?>">
+                            <input type="hidden" name="meal_index" value="<?= (int) $mealIndex ?>">
+                            <input type="hidden" name="lock_state" value="<?= $mealLocked ? 0 : 1 ?>">
+                            <button type="submit" class="meal-lock-btn<?= $mealLocked ? ' is-locked' : '' ?>">
+                                <i data-lucide="<?= $mealLocked ? 'unlock' : 'lock' ?>" style="width:12px;height:12px;"></i>
+                                <?= $mealLocked ? __('plan_unlock_btn') : __('plan_lock_btn') ?>
+                            </button>
+                        </form>
+                        <?php if (!$mealLocked): ?>
                         <details class="meal-replace">
                             <summary>
                                 <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
@@ -1025,6 +1177,7 @@ require_once __DIR__ . '/includes/header.php';
                                 <?= __('plan_undo_btn') ?>
                             </button>
                         </form>
+                        <?php endif; ?>
                         <?php endif; ?>
                         </div>
                         <?php endif; ?>

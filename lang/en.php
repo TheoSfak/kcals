@@ -284,6 +284,7 @@ return [
     'plan_replace_success'  => 'Meal replaced.',
     'plan_replace_success_desc' => 'Your shopping list updated automatically.',
     'plan_replace_error'    => 'Could not replace this meal. Please try again.',
+    'plan_replace_locked_error' => 'Unlock this meal before changing it.',
     'plan_replace_badge'    => 'Changed',
     'plan_replace_include_confirm' => 'This meal contains a food you asked to include. Are you sure you want to change it?',
     'plan_replace_include_warning' => 'Heads up: after this change, your plan is missing: %s.',
@@ -291,6 +292,14 @@ return [
     'plan_undo_success'     => 'Change undone.',
     'plan_undo_success_desc'=> 'The previous meal is back and your shopping list updated.',
     'plan_undo_error'       => 'Could not undo this change.',
+    'plan_lock_btn'         => 'Lock',
+    'plan_unlock_btn'       => 'Unlock',
+    'plan_locked_badge'     => 'Locked',
+    'plan_lock_success'     => 'Meal locked.',
+    'plan_lock_success_desc'=> 'It will stay the same on the next plan regeneration.',
+    'plan_unlock_success'   => 'Meal unlocked.',
+    'plan_unlock_success_desc' => 'It can change again on the next regeneration.',
+    'plan_lock_error'       => 'Could not update this meal lock.',
 
     // ---- Progress ----
     'progress_title'        => 'Progress – KCALS',
