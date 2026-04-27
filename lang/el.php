@@ -495,6 +495,7 @@ return [
     'google_sync_preview_ok'        => 'Βρέθηκε backup στο Google Drive. Ελέγξτε τη σύνοψη πριν την επαναφορά.',
     'google_sync_restore_ok'        => 'Το backup από το Google Drive επαναφέρθηκε επιτυχώς.',
     'google_sync_config_missing'    => 'Το Google Sync δεν έχει ρυθμιστεί ακόμα. Προσθέστε config/google.php με τα Google OAuth credentials.',
+    'google_sync_config_help'       => 'Απαιτείται ρύθμιση: αντιγράψτε το config/google.php.example σε config/google.php και προσθέστε Google OAuth client ID, secret και encryption key.',
     'google_sync_not_connected'     => 'Συνδέστε πρώτα τον Google λογαριασμό πριν κάνετε backup.',
     'google_sync_backup_error'      => 'Το KCALS δεν μπόρεσε να αποθηκεύσει το backup στο Google Drive. Δοκιμάστε ξανά.',
     'google_sync_preview_error'     => 'Το KCALS δεν μπόρεσε να διαβάσει backup από το Google Drive. Δημιουργήστε πρώτα backup ή δοκιμάστε ξανά.',

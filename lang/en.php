@@ -494,6 +494,7 @@ return [
     'google_sync_preview_ok'        => 'Google Drive backup found. Review the summary before restoring.',
     'google_sync_restore_ok'        => 'Google Drive backup restored successfully.',
     'google_sync_config_missing'    => 'Google Sync is not configured yet. Add config/google.php with your Google OAuth credentials first.',
+    'google_sync_config_help'       => 'Setup required: copy config/google.php.example to config/google.php and add your Google OAuth client ID, secret and encryption key.',
     'google_sync_not_connected'     => 'Connect Google before running a backup.',
     'google_sync_backup_error'      => 'KCALS could not save the Google Drive backup. Please try again.',
     'google_sync_preview_error'     => 'KCALS could not read a Google Drive backup. Create a backup first or try again.',

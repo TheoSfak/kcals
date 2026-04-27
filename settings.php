@@ -381,13 +381,17 @@ require_once __DIR__ . '/includes/header.php';
                     <i data-lucide="settings" style="width:14px;height:14px;"></i>
                     <?= __('google_sync_status_config') ?>
                 </span>
-                <button type="button" class="btn btn-outline btn-sm" disabled>
+                <a href="<?= BASE_URL ?>/google_connect.php" class="btn btn-outline btn-sm">
+                    <i data-lucide="settings" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
                     <?= __('google_sync_connect') ?>
-                </button>
+                </a>
             <?php endif; ?>
         </div>
         <div class="google-sync-meta">
             <?= __('google_sync_phase_note') ?><br>
+            <?php if (!$googleSyncConfigured): ?>
+                <?= __('google_sync_config_help') ?><br>
+            <?php endif; ?>
             <?php if ($googleConnection && !empty($googleConnection['last_sync_at'])): ?>
                 <?= __('google_sync_last_backup') ?>: <?= htmlspecialchars(date('d/m/Y H:i', strtotime($googleConnection['last_sync_at']))) ?><br>
             <?php endif; ?>
