@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 // KCALS - Google Sync helpers
-// Phase 1: OAuth connection storage only.
+// Google OAuth connection + private Drive appData backups.
 // ============================================================
 
 require_once __DIR__ . '/auth.php';
@@ -124,6 +124,74 @@ function googleSyncHttpPost(string $url, array $fields): array {
     return $data;
 }
 
+function googleSyncHttpJson(string $method, string $url, string $accessToken, array $payload): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json',
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($body === false) {
+        throw new RuntimeException('Google request failed: ' . $err);
+    }
+    $data = json_decode($body, true);
+    if ($status < 200 || $status >= 300 || !is_array($data)) {
+        throw new RuntimeException('Google JSON request failed.');
+    }
+    return $data;
+}
+
+function googleSyncHttpMultipart(string $method, string $url, string $accessToken, array $metadata, string $jsonBody): array {
+    $boundary = 'kcals_' . bin2hex(random_bytes(12));
+    $body = "--$boundary\r\n"
+        . "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        . json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\r\n"
+        . "--$boundary\r\n"
+        . "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        . $jsonBody . "\r\n"
+        . "--$boundary--";
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 45,
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: multipart/related; boundary=' . $boundary,
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        throw new RuntimeException('Google Drive upload failed: ' . $err);
+    }
+    $data = json_decode($response, true);
+    if ($status === 404) {
+        return ['_missing' => true];
+    }
+    if ($status < 200 || $status >= 300 || !is_array($data)) {
+        throw new RuntimeException('Google Drive upload failed.');
+    }
+    return $data;
+}
+
 function googleSyncHttpGetJson(string $url, string $accessToken): array {
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -200,6 +268,51 @@ function googleSyncSaveConnection(int $userId, array $token, array $profile): vo
     ]);
 }
 
+function googleSyncUpdateAccessToken(int $userId, array $token): void {
+    $expiresAt = date('Y-m-d H:i:s', time() + max(60, (int) ($token['expires_in'] ?? 3600)));
+    $stmt = getDB()->prepare("
+        UPDATE google_accounts
+        SET access_token_cipher = ?, token_type = ?, expires_at = ?, updated_at = NOW()
+        WHERE user_id = ?
+    ");
+    $stmt->execute([
+        googleSyncEncrypt((string) ($token['access_token'] ?? '')),
+        (string) ($token['token_type'] ?? 'Bearer'),
+        $expiresAt,
+        $userId,
+    ]);
+}
+
+function googleSyncRefreshAccessToken(int $userId, array $connection): string {
+    $refreshToken = googleSyncDecrypt($connection['refresh_token_cipher'] ?? null);
+    if (!$refreshToken) {
+        throw new RuntimeException('Google refresh token is missing.');
+    }
+
+    $cfg = googleSyncConfig();
+    $token = googleSyncHttpPost('https://oauth2.googleapis.com/token', [
+        'client_id' => $cfg['client_id'],
+        'client_secret' => $cfg['client_secret'],
+        'refresh_token' => $refreshToken,
+        'grant_type' => 'refresh_token',
+    ]);
+    $accessToken = (string) ($token['access_token'] ?? '');
+    if ($accessToken === '') {
+        throw new RuntimeException('Google did not return a refreshed access token.');
+    }
+    googleSyncUpdateAccessToken($userId, $token);
+    return $accessToken;
+}
+
+function googleSyncAccessToken(int $userId, array $connection): string {
+    $expiresAt = strtotime((string) ($connection['expires_at'] ?? '')) ?: 0;
+    $accessToken = googleSyncDecrypt($connection['access_token_cipher'] ?? null);
+    if ($accessToken && $expiresAt > time() + 120) {
+        return $accessToken;
+    }
+    return googleSyncRefreshAccessToken($userId, $connection);
+}
+
 function googleSyncGetConnection(int $userId): ?array {
     try {
         $db = getDB();
@@ -214,4 +327,134 @@ function googleSyncGetConnection(int $userId): ?array {
 function googleSyncDisconnect(int $userId): void {
     $db = getDB();
     $db->prepare('DELETE FROM google_accounts WHERE user_id = ?')->execute([$userId]);
+}
+
+function googleSyncTableExists(string $table): bool {
+    try {
+        $stmt = getDB()->prepare('SHOW TABLES LIKE ?');
+        $stmt->execute([$table]);
+        return (bool) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function googleSyncRows(string $sql, array $params = []): array {
+    $stmt = getDB()->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+function googleSyncBuildBackupSnapshot(int $userId): array {
+    $db = getDB();
+
+    $userStmt = $db->prepare('SELECT * FROM users WHERE id = ? LIMIT 1');
+    $userStmt->execute([$userId]);
+    $user = $userStmt->fetch() ?: [];
+    unset($user['password_hash']);
+
+    $snapshot = [
+        'meta' => [
+            'app' => 'KCALS',
+            'version' => trim((string) @file_get_contents(__DIR__ . '/../VERSION')),
+            'exported_at' => gmdate('c'),
+            'format' => 'kcals-google-drive-backup-v1',
+        ],
+        'user' => $user,
+        'progress' => googleSyncRows('SELECT * FROM user_progress WHERE user_id = ? ORDER BY entry_date ASC, id ASC', [$userId]),
+        'weekly_plans' => googleSyncRows('SELECT * FROM weekly_plans WHERE user_id = ? ORDER BY created_at ASC, id ASC', [$userId]),
+        'food_exclusions' => googleSyncRows('
+            SELECT ufe.food_id, f.name_en, f.name_el, NULL AS created_at
+            FROM user_food_exclusions ufe
+            LEFT JOIN foods f ON f.id = ufe.food_id
+            WHERE ufe.user_id = ?
+            ORDER BY f.name_en, ufe.food_id
+        ', [$userId]),
+        'food_inclusions' => googleSyncRows('
+            SELECT ufi.food_id, f.name_en, f.name_el, ufi.created_at
+            FROM user_food_inclusions ufi
+            LEFT JOIN foods f ON f.id = ufi.food_id
+            WHERE ufi.user_id = ?
+            ORDER BY f.name_en, ufi.food_id
+        ', [$userId]),
+    ];
+
+    if (googleSyncTableExists('user_achievements')) {
+        $snapshot['achievements'] = googleSyncRows(
+            'SELECT achievement_slug, earned_at FROM user_achievements WHERE user_id = ? ORDER BY earned_at ASC',
+            [$userId]
+        );
+    }
+
+    return $snapshot;
+}
+
+function googleSyncUploadDriveBackup(int $userId, string $accessToken, array $snapshot, ?string $fileId = null): array {
+    $json = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    if ($json === false) {
+        throw new RuntimeException('Unable to encode KCALS backup.');
+    }
+
+    $metadata = [
+        'name' => 'kcals-backup.json',
+        'mimeType' => 'application/json',
+    ];
+
+    if ($fileId) {
+        $url = 'https://www.googleapis.com/upload/drive/v3/files/' . rawurlencode($fileId)
+            . '?uploadType=multipart&fields=id,name,modifiedTime';
+        $updated = googleSyncHttpMultipart('PATCH', $url, $accessToken, $metadata, $json);
+        if (empty($updated['_missing'])) {
+            return $updated;
+        }
+    }
+
+    $metadata['parents'] = ['appDataFolder'];
+    $url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime';
+    return googleSyncHttpMultipart('POST', $url, $accessToken, $metadata, $json);
+}
+
+function googleSyncMarkBackup(int $userId, string $status, ?string $fileId = null, ?string $error = null): void {
+    $sets = ['sync_status = ?', 'updated_at = NOW()'];
+    $params = [$status];
+    if ($status === 'backup_ok') {
+        $sets[] = 'last_sync_at = NOW()';
+        $sets[] = 'last_sync_error = NULL';
+    }
+    if ($fileId !== null) {
+        $sets[] = 'drive_backup_file_id = ?';
+        $params[] = $fileId;
+    }
+    if ($error !== null) {
+        $sets[] = 'last_sync_error = ?';
+        $params[] = mb_substr($error, 0, 1000);
+    }
+    $params[] = $userId;
+    getDB()->prepare('UPDATE google_accounts SET ' . implode(', ', $sets) . ' WHERE user_id = ?')->execute($params);
+}
+
+function googleSyncBackupNow(int $userId): array {
+    if (!googleSyncIsConfigured()) {
+        throw new RuntimeException('Google Sync is not configured.');
+    }
+    $connection = googleSyncGetConnection($userId);
+    if (!$connection) {
+        throw new RuntimeException('Google account is not connected.');
+    }
+
+    try {
+        $accessToken = googleSyncAccessToken($userId, $connection);
+        $snapshot = googleSyncBuildBackupSnapshot($userId);
+        $file = googleSyncUploadDriveBackup(
+            $userId,
+            $accessToken,
+            $snapshot,
+            $connection['drive_backup_file_id'] ?? null
+        );
+        googleSyncMarkBackup($userId, 'backup_ok', (string) ($file['id'] ?? ''), null);
+        return $file;
+    } catch (Throwable $e) {
+        googleSyncMarkBackup($userId, 'backup_error', null, $e->getMessage());
+        throw $e;
+    }
 }

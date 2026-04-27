@@ -491,9 +491,14 @@ return [
     'google_sync_disconnect'        => 'Αποσύνδεση',
     'google_sync_connected'         => 'Ο Google λογαριασμός συνδέθηκε επιτυχώς.',
     'google_sync_disconnected'      => 'Ο Google λογαριασμός αποσυνδέθηκε.',
+    'google_sync_backup_ok'         => 'Το αντίγραφο KCALS αποθηκεύτηκε ιδιωτικά στο Google Drive app data.',
     'google_sync_config_missing'    => 'Το Google Sync δεν έχει ρυθμιστεί ακόμα. Προσθέστε config/google.php με τα Google OAuth credentials.',
+    'google_sync_not_connected'     => 'Συνδέστε πρώτα τον Google λογαριασμό πριν κάνετε backup.',
+    'google_sync_backup_error'      => 'Το KCALS δεν μπόρεσε να αποθηκεύσει το backup στο Google Drive. Δοκιμάστε ξανά.',
     'google_sync_error'             => 'Το Google Sync δεν μπόρεσε να ολοκληρώσει τη σύνδεση. Δοκιμάστε ξανά.',
-    'google_sync_phase_note'        => 'Η φάση 1 αποθηκεύει μόνο την κρυπτογραφημένη σύνδεση Google. Δεν συγχρονίζεται ακόμα πρόοδος, πλάνο ή ημερολόγιο.',
+    'google_sync_backup_now'        => 'Backup τώρα',
+    'google_sync_last_backup'       => 'Τελευταίο backup',
+    'google_sync_phase_note'        => 'Η φάση 2 αποθηκεύει το προφίλ, την πρόοδο, τις προτιμήσεις και το ιστορικό πλάνων στο Google Drive app data. Ο συγχρονισμός Calendar για meal prep έρχεται μετά.',
     'google_sync_redirect_uri'      => 'Google OAuth redirect URI',
 
     // ---- Hormetic Recharge Day (ημέρα αναφόρτισης v0.9.5) ----

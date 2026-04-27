@@ -490,9 +490,14 @@ return [
     'google_sync_disconnect'        => 'Disconnect',
     'google_sync_connected'         => 'Google account connected successfully.',
     'google_sync_disconnected'      => 'Google account disconnected.',
+    'google_sync_backup_ok'         => 'KCALS backup saved privately to Google Drive app data.',
     'google_sync_config_missing'    => 'Google Sync is not configured yet. Add config/google.php with your Google OAuth credentials first.',
+    'google_sync_not_connected'     => 'Connect Google before running a backup.',
+    'google_sync_backup_error'      => 'KCALS could not save the Google Drive backup. Please try again.',
     'google_sync_error'             => 'Google Sync could not complete the connection. Please try again.',
-    'google_sync_phase_note'        => 'Phase 1 stores the encrypted Google connection only. No progress, meal plan or calendar data is synced yet.',
+    'google_sync_backup_now'        => 'Backup now',
+    'google_sync_last_backup'       => 'Last backup',
+    'google_sync_phase_note'        => 'Phase 2 backs up your KCALS profile, progress, preferences and meal-plan history to Google Drive app data. Calendar meal-prep sync comes next.',
     'google_sync_redirect_uri'      => 'Google OAuth redirect URI',
 
     // ---- Hormetic Recharge Day (v0.9.5) ----
