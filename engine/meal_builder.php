@@ -23,6 +23,7 @@ class MealBuilder
     private array  $avoidMealFamilies;
     private bool   $quickMainOnly;
     private bool   $superSimple;
+    private array  $weeklyFamilyCounts;
 
     /**
      * @param array $profile  Optional preference profile:
@@ -51,6 +52,7 @@ class MealBuilder
             )
         )));
         $this->quickMainOnly = (bool) ($profile['quick_main_only'] ?? false) || $this->superSimple;
+        $this->weeklyFamilyCounts = array_map('intval', (array) ($profile['weekly_family_counts'] ?? []));
     }
 
     // ──────────────────────────────────────────────────────────
@@ -384,14 +386,17 @@ class MealBuilder
                    AND available_months LIKE ?
                    AND meal_slots      LIKE ?
                    $dietFilter $cuisineSQL $allergenSQL $excludeSQL
-                 ORDER BY RAND() LIMIT 24";
+                 ORDER BY id LIMIT 120";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
+        $rows = array_values(array_filter(
+            $rows,
+            fn($food) => !$this->isDisliked($food) && $this->foodAllowedForPlanner($food)
+        ));
 
-        // Return first non-disliked food
-        foreach ($rows as $food) {
-            if (!$this->isDisliked($food) && $this->foodAllowedForPlanner($food)) return $food;
+        if (!empty($rows)) {
+            return $this->chooseScoredFood($rows, $slot, $typeExpr);
         }
 
         // Relax variety constraint and retry once (keep allergen + cuisine filters)
@@ -399,6 +404,93 @@ class MealBuilder
             return $this->pick($typeExpr, $slot, []);
         }
         return null;
+    }
+
+    private function chooseScoredFood(array $foods, string $slot, string $typeExpr): ?array
+    {
+        $scored = [];
+        foreach ($foods as $food) {
+            $scored[] = [
+                'food' => $food,
+                'score' => $this->scoreFood($food, $slot, $typeExpr),
+            ];
+        }
+
+        usort(
+            $scored,
+            fn($a, $b) => $b['score'] <=> $a['score']
+        );
+
+        $poolSize = min(count($scored), $this->superSimple ? 2 : 4);
+        $pool = array_slice($scored, 0, $poolSize);
+        $weights = [];
+        foreach ($pool as $idx => $item) {
+            $weights[$idx] = max(1, 8 - ($idx * 2));
+        }
+
+        $total = array_sum($weights);
+        $roll = random_int(1, $total);
+        foreach ($pool as $idx => $item) {
+            $roll -= $weights[$idx];
+            if ($roll <= 0) {
+                return $item['food'];
+            }
+        }
+
+        return $pool[0]['food'] ?? null;
+    }
+
+    private function scoreFood(array $food, string $slot, string $typeExpr): int
+    {
+        $family = $this->mealFamily($food);
+        $effort = $this->cookingEffort($food);
+        $type = (string) ($food['food_type'] ?? '');
+        $prep = (int) ($food['prep_minutes'] ?? 0);
+        $score = 100;
+
+        $score -= $prep * ($this->superSimple ? 3 : ($this->quickMainOnly ? 2 : 1));
+        $score -= min(45, ($this->weeklyFamilyCounts[$family] ?? 0) * 14);
+        if (($this->weeklyFamilyCounts[$family] ?? 0) >= 4) {
+            $score -= 25;
+        }
+
+        if ($type === 'vegetable') {
+            $score += $prep <= 8 ? 12 : -8;
+        }
+        if ($type === 'carb') {
+            $score += $prep <= 10 ? 10 : -8;
+        }
+
+        if ($slot === 'breakfast') {
+            if (in_array($family, ['dairy', 'eggs', 'fruit', 'carb'], true)) $score += 12;
+            if ($effort === 'main_cooking') $score -= 35;
+        } elseif ($slot === 'snack') {
+            if (in_array($family, ['dairy', 'fruit', 'fat', 'eggs'], true)) $score += 18;
+            if ($prep <= 3) $score += 10;
+            if ($effort !== 'quick') $score -= 25;
+        } elseif ($slot === 'dinner') {
+            if (in_array($family, ['legume', 'dairy', 'eggs', 'plant_protein'], true)) $score += 18;
+            if ($effort === 'quick') $score += 12;
+            if ($family === 'heavy_mixed') $score -= 60;
+            if (in_array($family, ['fish', 'shellfish', 'red_meat', 'pork', 'lamb'], true)) $score -= 12;
+        } else {
+            if ($effort === 'main_cooking') $score += 8;
+            if ($family === 'heavy_mixed') $score += 10;
+        }
+
+        if ($this->superSimple) {
+            if (in_array($family, ['legume', 'dairy', 'eggs', 'plant_protein', 'carb', 'vegetable'], true)) $score += 18;
+            if (in_array($family, ['legume', 'eggs', 'plant_protein'], true) && ($this->weeklyFamilyCounts[$family] ?? 0) < 3) $score += 10;
+            if ($prep <= 5) $score += 16;
+            if ($effort === 'main_cooking') $score -= 30;
+        }
+
+        if ($this->quickMainOnly && in_array($family, ['legume', 'dairy', 'eggs', 'plant_protein'], true)) {
+            $score += 12;
+        }
+
+        // Small jitter keeps weekly plans from becoming identical while preserving ranking.
+        return $score + random_int(0, 6);
     }
 
     private function findFoodByIdForSlot(int $foodId, string $slot): ?array

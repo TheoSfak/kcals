@@ -134,11 +134,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
             }
             return false;
         };
+        $mealMainFamilies = function (array $meal) use ($mainCookingFamilies): array {
+            $families = [];
+            foreach (($meal['components'] ?? []) as $component) {
+                $family = (string) ($component['meal_family'] ?? '');
+                $effort = (string) ($component['cooking_effort'] ?? '');
+                if ($effort === 'main_cooking' || in_array($family, $mainCookingFamilies, true)) {
+                    $families[$family] = true;
+                }
+            }
+            return array_keys($families);
+        };
+        $mealScoredFamilies = function (array $meal) use ($mainCookingFamilies): array {
+            $families = [];
+            $countableFamilies = array_merge($mainCookingFamilies, ['legume', 'dairy', 'eggs', 'plant_protein']);
+            foreach (($meal['components'] ?? []) as $component) {
+                $family = (string) ($component['meal_family'] ?? '');
+                $type = (string) ($component['food_type'] ?? '');
+                $effort = (string) ($component['cooking_effort'] ?? '');
+                if (
+                    in_array($family, $countableFamilies, true)
+                    && ($effort === 'main_cooking' || in_array($type, ['protein', 'dairy', 'mixed'], true))
+                ) {
+                    $families[$family] = true;
+                }
+            }
+            return array_keys($families);
+        };
 
         $dayNames    = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
         $planData    = [];
         $planSchedule = [];
         $usedFoodIds = []; // All food IDs used this week (for variety)
+        $weeklyFamilyCounts = [];
 
         foreach ($dayNames as $day) {
             $dayMeals   = [];
@@ -175,12 +203,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                     $slotProfile['max_prep_minutes'] = 20;
                     $slotProfile['avoid_meal_families'] = $mainCookingFamilies;
                 }
+                $slotProfile['weekly_family_counts'] = $weeklyFamilyCounts;
                 $planSchedule[$day][$slot] = [
                     'target'  => $kcalTarget,
                     'profile' => $slotProfile,
                 ];
                 $builder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $slotProfile);
                 $meal = null;
+                $reserveDinnerForInclude = false;
                 if (!$dayHasIncludedFood) {
                     foreach ($remainingIncludeIds as $includeIndex => $includeId) {
                         $candidateMeal = $builder->buildMealWithFood($slot, $kcalTarget, (int) $includeId, $usedFoodIds, $dayFoodIds);
@@ -194,11 +224,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
                         }
                     }
                 }
+                if (
+                    $meal === null
+                    && $slot === 'lunch'
+                    && !$dayHasIncludedFood
+                    && !empty($remainingIncludeIds)
+                    && isset($mealTargets['dinner'])
+                ) {
+                    foreach ($remainingIncludeIds as $includeId) {
+                        if (
+                            $builder->buildMealWithFood('lunch', $kcalTarget, (int) $includeId, [], []) === null
+                            && $builder->buildMealWithFood('dinner', (int) $mealTargets['dinner'], (int) $includeId, [], []) !== null
+                        ) {
+                            $reserveDinnerForInclude = true;
+                            break;
+                        }
+                    }
+                }
                 if ($meal === null) {
-                    $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                    if ($reserveDinnerForInclude) {
+                        $supportProfile = $slotProfile;
+                        $supportProfile['quick_main_only'] = true;
+                        $supportProfile['max_prep_minutes'] = 20;
+                        $supportProfile['avoid_meal_families'] = $mainCookingFamilies;
+                        $supportBuilder = new MealBuilder($db, $dietType, $currentMonth, $dislikes, $supportProfile);
+                        $meal = $supportBuilder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                    } else {
+                        $meal = $builder->buildMeal($slot, $kcalTarget, $usedFoodIds, $dayFoodIds);
+                    }
                 }
                 if (($slot === 'lunch' || $slot === 'dinner') && $mealHasMainCooking($meal)) {
                     $dayHasMainCooking = true;
+                }
+                foreach ($mealScoredFamilies($meal) as $family) {
+                    $weeklyFamilyCounts[$family] = ($weeklyFamilyCounts[$family] ?? 0) + 1;
                 }
                 $dayMeals[] = $meal;
                 foreach ($meal['components'] as $c) {
