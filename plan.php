@@ -295,6 +295,42 @@ function kcalsPlanDayQuality(array $meals, array $mainCookingFamilies): array {
     ];
 }
 
+function kcalsPlanHistorySummary($planData, array $mainCookingFamilies): array {
+    if (!is_array($planData) || empty($planData)) {
+        return [
+            'avg_kcal' => 0,
+            'quality_counts' => ['easy' => 0, 'balanced' => 0, 'watch' => 0, 'heavy' => 0],
+            'locked_count' => 0,
+        ];
+    }
+
+    $totalKcal = 0;
+    $dayCount = 0;
+    $lockedCount = 0;
+    $qualityCounts = ['easy' => 0, 'balanced' => 0, 'watch' => 0, 'heavy' => 0];
+
+    foreach ($planData as $dayMeals) {
+        if (!is_array($dayMeals)) {
+            continue;
+        }
+
+        $dayCount++;
+        $totalKcal += array_sum(array_map(fn($meal) => (int) ($meal['calories'] ?? 0), $dayMeals));
+        $quality = kcalsPlanDayQuality($dayMeals, $mainCookingFamilies);
+        $status = (string) ($quality['status'] ?? 'balanced');
+        if (isset($qualityCounts[$status])) {
+            $qualityCounts[$status]++;
+        }
+        $lockedCount += (int) ($quality['locked_count'] ?? 0);
+    }
+
+    return [
+        'avg_kcal' => $dayCount > 0 ? (int) round($totalKcal / $dayCount) : 0,
+        'quality_counts' => $qualityCounts,
+        'locked_count' => $lockedCount,
+    ];
+}
+
 function kcalsPlanReplacementContext(array $planData, string $skipDay, int $skipIndex, array $mainCookingFamilies): array {
     $usedWeekIds = [];
     $usedTodayIds = [];
@@ -373,6 +409,7 @@ $lockSuccess = false;
 $unlockSuccess = false;
 $dayRegenerateSuccess = false;
 $dayRegeneratedLabel = '';
+$restoreSuccess = false;
 $replaceWarning = '';
 $includedUsedNames = [];
 $includedSkippedNames = [];
@@ -893,6 +930,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'regen
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'restore_plan') {
+    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
+        $genError = __('err_plan_invalid');
+    } else {
+        $restorePlanId = (int) ($_POST['restore_plan_id'] ?? 0);
+        $planRowStmt = $db->prepare('SELECT * FROM weekly_plans WHERE id = ? AND user_id = ? LIMIT 1');
+        $planRowStmt->execute([$restorePlanId, $userId]);
+        $restorePlanRow = $planRowStmt->fetch();
+        $restorePlanData = $restorePlanRow ? json_decode($restorePlanRow['plan_data_json'], true) : null;
+
+        if (!$restorePlanRow || !is_array($restorePlanData)) {
+            $genError = __('plan_history_restore_error');
+        } else {
+            $ins = $db->prepare('
+                INSERT INTO weekly_plans (user_id, start_date, end_date, target_calories, zone, plan_data_json)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ');
+            $ins->execute([
+                $userId,
+                $restorePlanRow['start_date'],
+                $restorePlanRow['end_date'],
+                (int) $restorePlanRow['target_calories'],
+                $restorePlanRow['zone'],
+                json_encode($restorePlanData, JSON_UNESCAPED_UNICODE),
+            ]);
+            $restoreSuccess = true;
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate_plan') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $genError = __('err_plan_invalid');
@@ -1251,6 +1318,16 @@ $planStmt->execute([$userId]);
 $plan = $planStmt->fetch();
 $planData = $plan ? json_decode($plan['plan_data_json'], true) : null;
 
+$historyStmt = $db->prepare('
+    SELECT *
+    FROM weekly_plans
+    WHERE user_id = ?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 8
+');
+$historyStmt->execute([$userId]);
+$planHistory = $historyStmt->fetchAll();
+
 $pageTitle = __('plan_title');
 $activeNav = 'plan';
 require_once __DIR__ . '/includes/header.php';
@@ -1288,6 +1365,10 @@ require_once __DIR__ . '/includes/header.php';
                 <i data-lucide="printer" style="width:15px;height:15px;"></i>
                 <?= __('plan_print') ?>
             </button>
+            <a href="#plan-history" class="btn btn-outline">
+                <i data-lucide="history" style="width:15px;height:15px;"></i>
+                <?= __('plan_history_btn') ?>
+            </a>
             <?php endif; ?>
             <a href="<?= BASE_URL ?>/settings.php" style="font-size:.8rem;color:#64748b;text-decoration:none;font-weight:500;">
                 <i data-lucide="settings-2" style="width:13px;height:13px;vertical-align:-1px;margin-right:3px;"></i><?= __('pref_edit_link') ?>
@@ -1352,6 +1433,11 @@ require_once __DIR__ . '/includes/header.php';
     <div class="alert alert-success" style="margin-bottom:1rem;">
         <strong><?= sprintf(__('plan_day_regenerate_success'), htmlspecialchars($dayRegeneratedLabel)) ?></strong>
         <?= __('plan_day_regenerate_success_desc') ?>
+    </div>
+    <?php endif; ?>
+    <?php if ($restoreSuccess): ?>
+    <div class="alert alert-success" style="margin-bottom:1rem;">
+        <strong><?= __('plan_history_restore_success') ?></strong> <?= __('plan_history_restore_success_desc') ?>
     </div>
     <?php endif; ?>
     <?php if ($replaceWarning): ?>
@@ -1430,6 +1516,67 @@ require_once __DIR__ . '/includes/header.php';
             <div class="text-small text-muted"><?= __('plan_avg_kcal') ?></div>
         </div>
     </div>
+    <?php endif; ?>
+
+    <?php if (!empty($planHistory)): ?>
+    <section id="plan-history" class="plan-history no-print">
+        <div class="plan-history-header">
+            <div>
+                <h2><?= __('plan_history_title') ?></h2>
+                <p><?= __('plan_history_desc') ?></p>
+            </div>
+            <span><?= sprintf(__('plan_history_count'), count($planHistory)) ?></span>
+        </div>
+        <div class="plan-history-list">
+            <?php foreach ($planHistory as $historyPlan): ?>
+            <?php
+                $historyData = json_decode($historyPlan['plan_data_json'], true);
+                $historySummary = kcalsPlanHistorySummary($historyData, $mainCookingFamilies);
+                $isCurrentHistoryPlan = $plan && (int) $historyPlan['id'] === (int) $plan['id'];
+                $qualitySummaryParts = [];
+                foreach (['easy', 'balanced', 'watch', 'heavy'] as $qualityStatus) {
+                    $count = (int) ($historySummary['quality_counts'][$qualityStatus] ?? 0);
+                    if ($count > 0) {
+                        $qualitySummaryParts[] = sprintf(__('plan_history_quality_' . $qualityStatus), $count);
+                    }
+                }
+            ?>
+            <div class="plan-history-item<?= $isCurrentHistoryPlan ? ' is-current' : '' ?>">
+                <div class="plan-history-main">
+                    <div class="plan-history-title">
+                        <strong><?= htmlspecialchars(date('d/m/Y H:i', strtotime($historyPlan['created_at']))) ?></strong>
+                        <?php if ($isCurrentHistoryPlan): ?>
+                        <span><?= __('plan_history_current') ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="plan-history-meta">
+                        <span><?= htmlspecialchars($historyPlan['start_date']) ?> → <?= htmlspecialchars($historyPlan['end_date']) ?></span>
+                        <span><?= (int) $historyPlan['target_calories'] ?> kcal</span>
+                        <span><?= sprintf(__('plan_history_avg'), (int) $historySummary['avg_kcal']) ?></span>
+                        <?php if ((int) $historySummary['locked_count'] > 0): ?>
+                        <span><?= sprintf(__('plan_quality_locked'), (int) $historySummary['locked_count']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($qualitySummaryParts)): ?>
+                    <div class="plan-history-quality"><?= htmlspecialchars(implode(' · ', $qualitySummaryParts)) ?></div>
+                    <?php endif; ?>
+                </div>
+                <?php if (!$isCurrentHistoryPlan): ?>
+                <form method="POST" action="<?= BASE_URL ?>/plan.php" class="plan-history-restore">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                    <input type="hidden" name="action" value="restore_plan">
+                    <input type="hidden" name="restore_plan_id" value="<?= (int) $historyPlan['id'] ?>">
+                    <button type="submit" class="btn btn-outline btn-sm"
+                            onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_history_restore_confirm')), ENT_QUOTES) ?>)">
+                        <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
+                        <?= __('plan_history_restore_btn') ?>
+                    </button>
+                </form>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
     <?php endif; ?>
 
     <!-- 7-Day Grid -->

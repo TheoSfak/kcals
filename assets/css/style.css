@@ -597,6 +597,99 @@ select.form-control { cursor: pointer; }
     color: #991b1b;
 }
 
+.plan-history {
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.plan-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: #f8fafc;
+}
+.plan-history-header h2 {
+    margin: 0 0 0.15rem;
+    color: var(--slate);
+    font-size: 1rem;
+}
+.plan-history-header p {
+    margin: 0;
+    color: var(--slate-mid);
+    font-size: 0.78rem;
+}
+.plan-history-header > span {
+    flex-shrink: 0;
+    color: var(--slate-mid);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+.plan-history-list {
+    display: grid;
+}
+.plan-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+}
+.plan-history-item:last-child {
+    border-bottom: 0;
+}
+.plan-history-item.is-current {
+    background: #f0fdf4;
+}
+.plan-history-main {
+    min-width: 0;
+}
+.plan-history-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    color: var(--slate);
+    font-size: 0.86rem;
+}
+.plan-history-title span {
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 0.64rem;
+    font-weight: 800;
+    padding: 0.08rem 0.42rem;
+}
+.plan-history-meta,
+.plan-history-quality {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+    color: var(--slate-mid);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.plan-history-meta span {
+    border-radius: 999px;
+    background: #f1f5f9;
+    padding: 0.08rem 0.42rem;
+}
+.plan-history-quality {
+    color: var(--slate-light);
+    font-weight: 600;
+}
+.plan-history-restore {
+    flex-shrink: 0;
+    margin: 0;
+}
+
 .meal-list { padding: 0.75rem; }
 
 .meal-item {
@@ -962,6 +1055,11 @@ footer {
     .plan-grid   { grid-template-columns: 1fr; }
     .day-card-header { align-items: flex-start; }
     .day-card-actions { flex-wrap: wrap; justify-content: flex-end; }
+    .plan-history-header,
+    .plan-history-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
     .stat-grid   { grid-template-columns: repeat(2, 1fr); }
     .auth-card   { padding: 1.75rem 1.25rem; }
     /* Hero split → stack */
