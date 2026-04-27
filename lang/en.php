@@ -305,6 +305,14 @@ return [
     'plan_day_regenerate_success' => '%s refreshed.',
     'plan_day_regenerate_success_desc' => 'Locked meals stayed the same and the rest of the week was untouched.',
     'plan_day_regenerate_error' => 'Could not refresh this day.',
+    'plan_quality_easy'    => 'Easy day',
+    'plan_quality_balanced'=> 'Balanced day',
+    'plan_quality_watch'   => 'Watch day',
+    'plan_quality_heavy'   => 'Heavy day',
+    'plan_quality_prep'    => '%d min',
+    'plan_quality_ingredients' => '%d foods',
+    'plan_quality_main_cooking' => '%d main cooks',
+    'plan_quality_locked'  => '%d locked',
 
     // ---- Progress ----
     'progress_title'        => 'Progress – KCALS',

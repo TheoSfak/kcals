@@ -306,6 +306,14 @@ return [
     'plan_day_regenerate_success' => 'Η ημέρα %s ανανεώθηκε.',
     'plan_day_regenerate_success_desc' => 'Τα κλειδωμένα γεύματα έμειναν ίδια και η υπόλοιπη εβδομάδα δεν άλλαξε.',
     'plan_day_regenerate_error' => 'Δεν ήταν δυνατή η ανανέωση αυτής της ημέρας.',
+    'plan_quality_easy'    => 'Εύκολη ημέρα',
+    'plan_quality_balanced'=> 'Ισορροπημένη ημέρα',
+    'plan_quality_watch'   => 'Θέλει προσοχή',
+    'plan_quality_heavy'   => 'Βαριά ημέρα',
+    'plan_quality_prep'    => '%d λεπτά',
+    'plan_quality_ingredients' => '%d τρόφιμα',
+    'plan_quality_main_cooking' => '%d βασικά μαγειρέματα',
+    'plan_quality_locked'  => '%d κλειδωμένα',
 
     // ---- Progress ----
     'progress_title'        => 'Πρόοδος – KCALS',

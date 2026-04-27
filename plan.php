@@ -246,6 +246,55 @@ function kcalsPlanRegisterMealUsage(
     }
 }
 
+function kcalsPlanDayQuality(array $meals, array $mainCookingFamilies): array {
+    $prepMinutes = 0;
+    $ingredientIds = [];
+    $mainCookingCount = 0;
+    $lockedCount = 0;
+
+    foreach ($meals as $meal) {
+        if (!is_array($meal)) {
+            continue;
+        }
+
+        $prepMinutes += (int) ($meal['prep_minutes'] ?? 0);
+        if (!empty($meal['locked'])) {
+            $lockedCount++;
+        }
+        if (
+            in_array((string) ($meal['slot'] ?? ''), ['lunch', 'dinner'], true)
+            && kcalsPlanMealHasMainCooking($meal, $mainCookingFamilies)
+        ) {
+            $mainCookingCount++;
+        }
+
+        foreach (($meal['components'] ?? []) as $component) {
+            $foodId = (int) ($component['food_id'] ?? 0);
+            if ($foodId > 0) {
+                $ingredientIds[$foodId] = true;
+            }
+        }
+    }
+
+    $ingredientCount = count($ingredientIds);
+    $status = 'balanced';
+    if ($mainCookingCount > 1 || $prepMinutes > 75 || $ingredientCount > 16) {
+        $status = 'heavy';
+    } elseif ($prepMinutes > 55 || $ingredientCount > 12) {
+        $status = 'watch';
+    } elseif ($prepMinutes <= 35 && $ingredientCount <= 10 && $mainCookingCount <= 1) {
+        $status = 'easy';
+    }
+
+    return [
+        'status' => $status,
+        'prep_minutes' => $prepMinutes,
+        'ingredient_count' => $ingredientCount,
+        'main_cooking_count' => $mainCookingCount,
+        'locked_count' => $lockedCount,
+    ];
+}
+
 function kcalsPlanReplacementContext(array $planData, string $skipDay, int $skipIndex, array $mainCookingFamilies): array {
     $usedWeekIds = [];
     $usedTodayIds = [];
@@ -1390,6 +1439,7 @@ require_once __DIR__ . '/includes/header.php';
         <?php
             $dayTotal = array_sum(array_column($meals, 'calories'));
             $isDayRechargeView = isRechargeDay($dayName, $rechargeDay);
+            $dayQuality = kcalsPlanDayQuality($meals, $mainCookingFamilies);
         ?>
         <div class="day-card<?= $isDayRechargeView ? ' recharge-day-card' : '' ?>">
             <div class="day-card-header">
@@ -1416,6 +1466,15 @@ require_once __DIR__ . '/includes/header.php';
                     <?php endif; ?>
                     <span class="day-kcal"><?= $dayTotal ?> kcal</span>
                 </div>
+            </div>
+            <div class="day-quality day-quality-<?= htmlspecialchars($dayQuality['status']) ?>">
+                <span class="day-quality-status"><?= __('plan_quality_' . $dayQuality['status']) ?></span>
+                <span><?= sprintf(__('plan_quality_prep'), (int) $dayQuality['prep_minutes']) ?></span>
+                <span><?= sprintf(__('plan_quality_ingredients'), (int) $dayQuality['ingredient_count']) ?></span>
+                <span><?= sprintf(__('plan_quality_main_cooking'), (int) $dayQuality['main_cooking_count']) ?></span>
+                <?php if ((int) $dayQuality['locked_count'] > 0): ?>
+                <span><?= sprintf(__('plan_quality_locked'), (int) $dayQuality['locked_count']) ?></span>
+                <?php endif; ?>
             </div>
             <div class="meal-list">
                 <?php foreach ($meals as $mealIndex => $meal): ?>
