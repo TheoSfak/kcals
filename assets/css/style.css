@@ -724,6 +724,41 @@ select.form-control { cursor: pointer; }
     font-size: 0.76rem;
     font-weight: 700;
 }
+.plan-preview-compare {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+    padding: 0.85rem 1rem;
+}
+.plan-preview-compare-title {
+    margin-bottom: 0.55rem;
+    color: var(--slate);
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+.plan-preview-compare-grid {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.plan-preview-compare-grid span {
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.16rem 0.5rem;
+}
+.plan-preview-compare-grid span.is-better {
+    background: #dcfce7;
+    color: #166534;
+}
+.plan-preview-compare-grid span.is-worse {
+    background: #fee2e2;
+    color: #991b1b;
+}
 
 .meal-list { padding: 0.75rem; }
 
@@ -1092,7 +1127,8 @@ footer {
     .day-card-actions { flex-wrap: wrap; justify-content: flex-end; }
     .plan-history-header,
     .plan-history-item,
-    .plan-preview-banner {
+    .plan-preview-banner,
+    .plan-preview-compare {
         align-items: flex-start;
         flex-direction: column;
     }

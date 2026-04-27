@@ -331,6 +331,59 @@ function kcalsPlanHistorySummary($planData, array $mainCookingFamilies): array {
     ];
 }
 
+function kcalsPlanMealSignature($meal): string {
+    if (!is_array($meal)) {
+        return '';
+    }
+
+    $parts = [
+        (string) ($meal['slot'] ?? $meal['category'] ?? ''),
+        (string) ($meal['name_en'] ?? $meal['name_el'] ?? $meal['title'] ?? ''),
+        (string) ((int) ($meal['calories'] ?? 0)),
+    ];
+
+    foreach (($meal['components'] ?? []) as $component) {
+        $foodId = (int) ($component['food_id'] ?? 0);
+        if ($foodId <= 0) {
+            continue;
+        }
+        $parts[] = $foodId . ':' . (int) ($component['grams'] ?? 0);
+    }
+
+    return implode('|', $parts);
+}
+
+function kcalsPlanComparePlans($currentPlanData, $previewPlanData, array $mainCookingFamilies): array {
+    $currentSummary = kcalsPlanHistorySummary($currentPlanData, $mainCookingFamilies);
+    $previewSummary = kcalsPlanHistorySummary($previewPlanData, $mainCookingFamilies);
+    $changedMeals = 0;
+    $changedDays = [];
+    $dayNames = array_values(array_unique(array_merge(
+        is_array($currentPlanData) ? array_keys($currentPlanData) : [],
+        is_array($previewPlanData) ? array_keys($previewPlanData) : []
+    )));
+
+    foreach ($dayNames as $dayName) {
+        $currentMeals = is_array($currentPlanData[$dayName] ?? null) ? $currentPlanData[$dayName] : [];
+        $previewMeals = is_array($previewPlanData[$dayName] ?? null) ? $previewPlanData[$dayName] : [];
+        $maxMeals = max(count($currentMeals), count($previewMeals));
+        for ($i = 0; $i < $maxMeals; $i++) {
+            if (kcalsPlanMealSignature($currentMeals[$i] ?? null) !== kcalsPlanMealSignature($previewMeals[$i] ?? null)) {
+                $changedMeals++;
+                $changedDays[$dayName] = true;
+            }
+        }
+    }
+
+    return [
+        'changed_meals' => $changedMeals,
+        'changed_days' => count($changedDays),
+        'avg_kcal_diff' => (int) $previewSummary['avg_kcal'] - (int) $currentSummary['avg_kcal'],
+        'heavy_day_diff' => (int) ($previewSummary['quality_counts']['heavy'] ?? 0) - (int) ($currentSummary['quality_counts']['heavy'] ?? 0),
+        'locked_diff' => (int) $previewSummary['locked_count'] - (int) $currentSummary['locked_count'],
+    ];
+}
+
 function kcalsPlanReplacementContext(array $planData, string $skipDay, int $skipIndex, array $mainCookingFamilies): array {
     $usedWeekIds = [];
     $usedTodayIds = [];
@@ -1333,6 +1386,7 @@ $previewPlanData = null;
 $viewPlan = $plan;
 $viewPlanData = $planData;
 $isHistoryPreview = false;
+$previewComparison = null;
 $previewPlanId = (int) ($_GET['preview_plan_id'] ?? 0);
 if ($previewPlanId > 0) {
     $previewStmt = $db->prepare('SELECT * FROM weekly_plans WHERE id = ? AND user_id = ? LIMIT 1');
@@ -1346,6 +1400,9 @@ if ($previewPlanId > 0) {
         $viewPlan = $previewPlan;
         $viewPlanData = $previewPlanData;
         $isHistoryPreview = !$plan || (int) $previewPlan['id'] !== (int) $plan['id'];
+        if ($isHistoryPreview && is_array($planData)) {
+            $previewComparison = kcalsPlanComparePlans($planData, $previewPlanData, $mainCookingFamilies);
+        }
     }
 }
 
@@ -1492,6 +1549,21 @@ require_once __DIR__ . '/includes/header.php';
                     <?= __('plan_history_restore_btn') ?>
                 </button>
             </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($isHistoryPreview && is_array($previewComparison)): ?>
+    <div class="plan-preview-compare no-print">
+        <div class="plan-preview-compare-title"><?= __('plan_compare_title') ?></div>
+        <div class="plan-preview-compare-grid">
+            <span><?= sprintf(__('plan_compare_changed_meals'), (int) $previewComparison['changed_meals']) ?></span>
+            <span><?= sprintf(__('plan_compare_changed_days'), (int) $previewComparison['changed_days']) ?></span>
+            <span><?= sprintf(__('plan_compare_avg_kcal'), (int) $previewComparison['avg_kcal_diff']) ?></span>
+            <span class="<?= (int) $previewComparison['heavy_day_diff'] > 0 ? 'is-worse' : ((int) $previewComparison['heavy_day_diff'] < 0 ? 'is-better' : '') ?>">
+                <?= sprintf(__('plan_compare_heavy_days'), (int) $previewComparison['heavy_day_diff']) ?>
+            </span>
+            <span><?= sprintf(__('plan_compare_locked'), (int) $previewComparison['locked_diff']) ?></span>
         </div>
     </div>
     <?php endif; ?>
