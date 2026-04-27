@@ -217,9 +217,43 @@ function kcalsPlanIncludedNames(array $currentInclusions, array $foodIds): array
 $generated = false;
 $genError  = '';
 $replaceSuccess = false;
+$undoSuccess = false;
 $replaceWarning = '';
 $includedUsedNames = [];
 $includedSkippedNames = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'undo_replace_meal') {
+    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
+        $genError = __('err_plan_invalid');
+    } else {
+        $planId = (int) ($_POST['plan_id'] ?? 0);
+        $dayName = (string) ($_POST['day_name'] ?? '');
+        $mealIndex = (int) ($_POST['meal_index'] ?? -1);
+
+        $planRowStmt = $db->prepare('SELECT * FROM weekly_plans WHERE id = ? AND user_id = ? LIMIT 1');
+        $planRowStmt->execute([$planId, $userId]);
+        $planRow = $planRowStmt->fetch();
+        $planDataForUndo = $planRow ? json_decode($planRow['plan_data_json'], true) : null;
+
+        if (
+            !$planRow
+            || !is_array($planDataForUndo)
+            || !isset($planDataForUndo[$dayName][$mealIndex]['previous_meal'])
+            || !is_array($planDataForUndo[$dayName][$mealIndex]['previous_meal'])
+        ) {
+            $genError = __('plan_undo_error');
+        } else {
+            $planDataForUndo[$dayName][$mealIndex] = $planDataForUndo[$dayName][$mealIndex]['previous_meal'];
+            $upd = $db->prepare('UPDATE weekly_plans SET plan_data_json = ? WHERE id = ? AND user_id = ?');
+            $upd->execute([
+                json_encode($planDataForUndo, JSON_UNESCAPED_UNICODE),
+                $planId,
+                $userId,
+            ]);
+            $undoSuccess = true;
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'replace_meal') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
@@ -324,6 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repla
                 $replacement['replaced'] = true;
                 $replacement['replace_reason'] = $reason;
                 $replacement['replaced_at'] = date('c');
+                $replacement['previous_meal'] = $oldMeal;
                 $planDataForReplace[$dayName][$mealIndex] = $replacement;
 
                 $upd = $db->prepare('UPDATE weekly_plans SET plan_data_json = ? WHERE id = ? AND user_id = ?');
@@ -763,6 +798,11 @@ require_once __DIR__ . '/includes/header.php';
         <strong><?= __('plan_replace_success') ?></strong> <?= __('plan_replace_success_desc') ?>
     </div>
     <?php endif; ?>
+    <?php if ($undoSuccess): ?>
+    <div class="alert alert-success" style="margin-bottom:1rem;">
+        <strong><?= __('plan_undo_success') ?></strong> <?= __('plan_undo_success_desc') ?>
+    </div>
+    <?php endif; ?>
     <?php if ($replaceWarning): ?>
     <div class="alert" style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; margin-bottom:1rem;">
         <?= $replaceWarning ?>
@@ -867,6 +907,14 @@ require_once __DIR__ . '/includes/header.php';
                         ? ($meal['name_el'] ?? $meal['title'] ?? '')
                         : ($meal['name_en'] ?? $meal['title'] ?? '');
                     $mealHasIncludedFood = kcalsPlanMealHasAnyFood($meal, $includedIds);
+                    $replaceReasonLabels = [
+                        'new' => __('plan_replace_new'),
+                        'quick' => __('plan_replace_quick'),
+                        'simple' => __('plan_replace_simple'),
+                        'protein' => __('plan_replace_protein'),
+                    ];
+                    $replaceReason = (string) ($meal['replace_reason'] ?? 'new');
+                    $replaceReasonLabel = $replaceReasonLabels[$replaceReason] ?? __('plan_replace_new');
                 ?>
                 <div class="meal-item<?= !empty($meal['replaced']) ? ' meal-item-replaced' : '' ?>">
                     <div class="meal-dot <?= htmlspecialchars($mSlot) ?>"></div>
@@ -874,7 +922,7 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="meal-type">
                             <?= __('meal_slot_' . $mSlot) ?>
                             <?php if (!empty($meal['replaced'])): ?>
-                            <span class="meal-replaced-badge"><?= __('plan_replace_badge') ?></span>
+                            <span class="meal-replaced-badge"><?= __('plan_replace_badge') ?>: <?= htmlspecialchars($replaceReasonLabel) ?></span>
                             <?php endif; ?>
                         </div>
                         <div class="meal-name" title="<?= htmlspecialchars($mName) ?>">
@@ -892,7 +940,8 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                         <?php endif; ?>
                         <?php if ($plan): ?>
-                        <details class="meal-replace no-print">
+                        <div class="meal-actions no-print">
+                        <details class="meal-replace">
                             <summary>
                                 <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
                                 <?= __('plan_replace_btn') ?>
@@ -918,6 +967,20 @@ require_once __DIR__ . '/includes/header.php';
                                 </button>
                             </form>
                         </details>
+                        <?php if (!empty($meal['previous_meal'])): ?>
+                        <form method="POST" action="<?= BASE_URL ?>/plan.php" class="meal-undo-form">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                            <input type="hidden" name="action" value="undo_replace_meal">
+                            <input type="hidden" name="plan_id" value="<?= (int) $plan['id'] ?>">
+                            <input type="hidden" name="day_name" value="<?= htmlspecialchars($dayName) ?>">
+                            <input type="hidden" name="meal_index" value="<?= (int) $mealIndex ?>">
+                            <button type="submit" class="meal-undo-btn">
+                                <i data-lucide="undo-2" style="width:12px;height:12px;"></i>
+                                <?= __('plan_undo_btn') ?>
+                            </button>
+                        </form>
+                        <?php endif; ?>
+                        </div>
                         <?php endif; ?>
                     </div>
                     <span class="meal-kcal"><?= $meal['calories'] ?> kcal</span>

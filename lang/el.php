@@ -285,6 +285,10 @@ return [
     'plan_replace_badge'    => 'Αλλάχθηκε',
     'plan_replace_include_confirm' => 'Αυτό το γεύμα περιέχει τρόφιμο που ζητήσατε να συμπεριληφθεί. Θέλετε σίγουρα να το αλλάξετε;',
     'plan_replace_include_warning' => 'Προσοχή: μετά την αλλαγή λείπει από το πρόγραμμα: %s.',
+    'plan_undo_btn'         => 'Αναίρεση',
+    'plan_undo_success'     => 'Η αλλαγή αναιρέθηκε.',
+    'plan_undo_success_desc'=> 'Το προηγούμενο γεύμα επανήλθε και η λίστα αγορών ενημερώθηκε.',
+    'plan_undo_error'       => 'Δεν ήταν δυνατή η αναίρεση αυτής της αλλαγής.',
 
     // ---- Progress ----
     'progress_title'        => 'Πρόοδος – KCALS',

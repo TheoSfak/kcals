@@ -569,6 +569,13 @@ select.form-control { cursor: pointer; }
     text-transform: none;
 }
 .meal-replace {
+    margin: 0;
+}
+.meal-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
     margin-top: 0.45rem;
 }
 .meal-replace summary {
@@ -604,6 +611,25 @@ select.form-control { cursor: pointer; }
 .meal-replace-submit {
     min-height: 34px;
     padding: 0.35rem 0.65rem;
+}
+.meal-undo-form {
+    margin: 0;
+}
+.meal-undo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 26px;
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0;
+}
+.meal-undo-btn:hover {
+    color: var(--green-dark);
 }
 
 /* ---------- Progress Chart ---------- */

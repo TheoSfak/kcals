@@ -284,6 +284,10 @@ return [
     'plan_replace_badge'    => 'Changed',
     'plan_replace_include_confirm' => 'This meal contains a food you asked to include. Are you sure you want to change it?',
     'plan_replace_include_warning' => 'Heads up: after this change, your plan is missing: %s.',
+    'plan_undo_btn'         => 'Undo',
+    'plan_undo_success'     => 'Change undone.',
+    'plan_undo_success_desc'=> 'The previous meal is back and your shopping list updated.',
+    'plan_undo_error'       => 'Could not undo this change.',
 
     // ---- Progress ----
     'progress_title'        => 'Progress – KCALS',
