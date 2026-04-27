@@ -236,7 +236,7 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="hidden" name="action" value="generate_plan">
                 <button type="submit" class="btn btn-primary"
                         <?php if (!empty($currentInclusions)): ?>
-                        onclick="return confirm('Generate a new plan and try to include your saved must-include foods?')"
+                        onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_include_confirm')), ENT_QUOTES) ?>)"
                         <?php endif; ?>>
                 <i data-lucide="wand-2" style="width:15px;height:15px;"></i>
                 <?= $plan ? __('plan_regen') : __('plan_gen') ?>
@@ -259,7 +259,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <div class="alert" style="background:#f0fdf4; border:1px solid #86efac; color:#14532d; margin-bottom:1rem;">
-        <strong>✅ Must-include foods:</strong>
+        <strong>✅ <?= __('plan_must_include_h') ?></strong>
         <?php if (!empty($currentInclusions)): ?>
             <?php
             $includeNames = array_map(
@@ -269,9 +269,9 @@ require_once __DIR__ . '/includes/header.php';
             ?>
             <?= implode(', ', $includeNames) ?>
         <?php else: ?>
-            none selected yet
+            <?= __('plan_include_none') ?>
         <?php endif; ?>
-        <a href="<?= BASE_URL ?>/settings.php" style="color:#166534;font-weight:700;margin-left:.5rem;">Manage</a>
+        <a href="<?= BASE_URL ?>/settings.php" style="color:#166534;font-weight:700;margin-left:.5rem;"><?= __('plan_include_manage') ?></a>
     </div>
 
     <?php if ($generated): ?>
@@ -280,13 +280,13 @@ require_once __DIR__ . '/includes/header.php';
     </div>
     <?php if (!empty($includedUsedNames)): ?>
     <div class="alert" style="background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46; margin-bottom:1rem;">
-        <strong>Included by request:</strong> <?= htmlspecialchars(implode(', ', $includedUsedNames)) ?>
+        <strong><?= __('plan_included_used') ?></strong> <?= htmlspecialchars(implode(', ', $includedUsedNames)) ?>
     </div>
     <?php endif; ?>
     <?php if (!empty($includedSkippedNames)): ?>
     <div class="alert" style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; margin-bottom:1rem;">
-        <strong>Could not include this time:</strong> <?= htmlspecialchars(implode(', ', $includedSkippedNames)) ?>.
-        Check diet, allergy, excluded-food, season, or meal-slot compatibility.
+        <strong><?= __('plan_included_skipped') ?></strong> <?= htmlspecialchars(implode(', ', $includedSkippedNames)) ?>.
+        <?= __('plan_included_hint') ?>
     </div>
     <?php endif; ?>
     <?php endif; ?>
@@ -434,7 +434,7 @@ require_once __DIR__ . '/includes/header.php';
             <input type="hidden" name="action" value="generate_plan">
             <button type="submit" class="btn btn-primary btn-lg"
                     <?php if (!empty($currentInclusions)): ?>
-                    onclick="return confirm('Generate a new plan and try to include your saved must-include foods?')"
+                    onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_include_confirm')), ENT_QUOTES) ?>)"
                     <?php endif; ?>>
             <i data-lucide="wand-2" style="width:18px;height:18px;"></i>
             <?= __('plan_gen_my') ?>

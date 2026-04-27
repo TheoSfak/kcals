@@ -369,8 +369,8 @@ require_once __DIR__ . '/includes/header.php';
 
         <!-- ===== Included Foods ===== -->
         <div class="settings-card">
-            <h3>✅ Foods I want in my plan</h3>
-            <p style="font-size:.82rem;color:#64748b;margin:0 0 .875rem;">Pick foods KCALS should try to include at least once when generating your weekly plan.</p>
+            <h3>✅ <?= __('settings_include_h') ?></h3>
+            <p style="font-size:.82rem;color:#64748b;margin:0 0 .875rem;"><?= __('settings_include_tip') ?></p>
 
             <div class="food-search-box">
                 <svg class="si" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -382,7 +382,7 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="excl-chips" id="s-incl-chips">
                 <?php if (empty($currentInclusions)): ?>
-                <span class="no-excl">No must-include foods selected.</span>
+                <span class="no-excl"><?= __('settings_include_none') ?></span>
                 <?php else: ?>
                 <?php foreach ($currentInclusions as $inc): ?>
                 <div class="excl-chip incl-chip" data-fid="<?= $inc['food_id'] ?>">
@@ -552,7 +552,7 @@ require_once __DIR__ . '/includes/header.php';
         if (!ids.length) {
             var lbl = document.createElement('span');
             lbl.className = 'no-excl';
-            lbl.textContent = 'No must-include foods selected.';
+            lbl.textContent = <?= json_encode(__('settings_include_none')) ?>;
             container.appendChild(lbl);
         } else {
             ids.forEach(function (fid) {
