@@ -5,7 +5,6 @@
 // and search/toggle per-food exclusions after the interview.
 // ============================================================
 require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/google_sync.php';
 
 requireLogin();
 
@@ -15,7 +14,6 @@ $user   = getCurrentUser();
 
 $saveSuccess = isset($_GET['saved']);
 $errors      = [];
-$googleStatus = $_GET['google'] ?? '';
 
 // ======== HANDLE POST ========
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -163,24 +161,6 @@ $inclStmt = $db->prepare('
 $inclStmt->execute([$userId]);
 $currentInclusions = $inclStmt->fetchAll();
 
-$googleSyncConfigured = googleSyncIsConfigured();
-$googleConnection = googleSyncGetConnection($userId);
-$googleRedirectUri = googleSyncRedirectUri();
-$googleRestorePreview = $_SESSION['google_restore_preview'] ?? null;
-$googleRestoreCounts = $_SESSION['google_restore_counts'] ?? null;
-$googleCalendarSyncCounts = $_SESSION['google_calendar_sync_counts'] ?? null;
-$googleCalendarCleanupCounts = $_SESSION['google_calendar_cleanup_counts'] ?? null;
-$googleCalendarResyncCounts = $_SESSION['google_calendar_resync_counts'] ?? null;
-$googleCalendarReady = googleSyncHasCalendarScope($googleConnection);
-$googleCalendarReminderMode = (string) ($googleConnection['calendar_reminder_mode'] ?? 'previous_evening');
-if (!in_array($googleCalendarReminderMode, googleSyncCalendarReminderModes(), true)) {
-    $googleCalendarReminderMode = 'previous_evening';
-}
-unset($_SESSION['google_restore_counts']);
-unset($_SESSION['google_calendar_sync_counts']);
-unset($_SESSION['google_calendar_cleanup_counts']);
-unset($_SESSION['google_calendar_resync_counts']);
-
 $pageTitle = __('settings_title');
 $activeNav = 'preferences';
 require_once __DIR__ . '/includes/header.php';
@@ -288,11 +268,6 @@ require_once __DIR__ . '/includes/header.php';
 .btn-save-settings:hover { background: #27ae60; }
 .alert-success { background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.9rem;color:#065f46; }
 .alert-error   { background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.9rem;color:#7f1d1d; }
-.google-sync-status { display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-top:1rem; }
-.google-sync-pill { display:inline-flex;align-items:center;gap:.35rem;border-radius:99px;padding:.32rem .75rem;font-size:.8rem;font-weight:700; }
-.google-sync-pill.ok { background:#dcfce7;color:#166534; }
-.google-sync-pill.warn { background:#fef3c7;color:#92400e; }
-.google-sync-meta { font-size:.78rem;color:#64748b;margin-top:.85rem;word-break:break-all; }
 </style>
 
 <div class="settings-wrap">
@@ -309,256 +284,9 @@ require_once __DIR__ . '/includes/header.php';
     <?php if ($saveSuccess): ?>
     <div class="alert-success"><?= __('settings_saved') ?></div>
     <?php endif; ?>
-<?php if ($googleStatus === 'connected'): ?>
-    <div class="alert-success"><?= __('google_sync_connected') ?></div>
-    <?php elseif ($googleStatus === 'disconnected'): ?>
-    <div class="alert-success"><?= __('google_sync_disconnected') ?></div>
-    <?php elseif ($googleStatus === 'backup_ok'): ?>
-    <div class="alert-success"><?= __('google_sync_backup_ok') ?></div>
-    <?php elseif ($googleStatus === 'preview_ok'): ?>
-    <div class="alert-success"><?= __('google_sync_preview_ok') ?></div>
-    <?php elseif ($googleStatus === 'restore_ok'): ?>
-    <div class="alert-success"><?= __('google_sync_restore_ok') ?></div>
-    <?php elseif ($googleStatus === 'calendar_saved'): ?>
-    <div class="alert-success"><?= __('google_calendar_saved') ?></div>
-    <?php elseif ($googleStatus === 'calendar_sync_ok'): ?>
-    <div class="alert-success"><?= __('google_calendar_sync_ok') ?></div>
-    <?php elseif ($googleStatus === 'calendar_removed'): ?>
-    <div class="alert-success"><?= __('google_calendar_removed') ?></div>
-    <?php elseif ($googleStatus === 'calendar_resync_ok'): ?>
-    <div class="alert-success"><?= __('google_calendar_resync_ok') ?></div>
-    <?php elseif ($googleStatus === 'config'): ?>
-    <div class="alert-error"><?= __('google_sync_config_missing') ?></div>
-    <?php elseif ($googleStatus === 'not_connected'): ?>
-    <div class="alert-error"><?= __('google_sync_not_connected') ?></div>
-    <?php elseif ($googleStatus === 'backup_error'): ?>
-    <div class="alert-error"><?= __('google_sync_backup_error') ?></div>
-    <?php elseif ($googleStatus === 'preview_error'): ?>
-    <div class="alert-error"><?= __('google_sync_preview_error') ?></div>
-    <?php elseif ($googleStatus === 'restore_error'): ?>
-    <div class="alert-error"><?= __('google_sync_restore_error') ?></div>
-    <?php elseif ($googleStatus === 'calendar_reconnect'): ?>
-    <div class="alert-error"><?= __('google_calendar_reconnect_needed') ?></div>
-    <?php elseif ($googleStatus === 'calendar_sync_error'): ?>
-    <div class="alert-error"><?= __('google_calendar_sync_error') ?></div>
-    <?php elseif ($googleStatus === 'calendar_cleanup_error'): ?>
-    <div class="alert-error"><?= __('google_calendar_cleanup_error') ?></div>
-    <?php elseif ($googleStatus === 'error'): ?>
-    <div class="alert-error"><?= __('google_sync_error') ?></div>
-    <?php endif; ?>
     <?php foreach ($errors as $e): ?>
     <div class="alert-error"><?= htmlspecialchars($e) ?></div>
     <?php endforeach; ?>
-
-    <div class="settings-card">
-        <h3>🔄 <?= __('google_sync_h') ?></h3>
-        <p style="font-size:.82rem;color:#64748b;margin:0;">
-            <?= __('google_sync_intro') ?>
-        </p>
-        <div class="google-sync-status">
-            <?php if ($googleConnection): ?>
-                <span class="google-sync-pill ok">
-                    <i data-lucide="check-circle" style="width:14px;height:14px;"></i>
-                    <?= __('google_sync_status_connected') ?>
-                </span>
-                <span style="font-size:.85rem;color:#374151;">
-                    <?= htmlspecialchars($googleConnection['google_email'] ?: $googleConnection['google_name'] ?: '') ?>
-                </span>
-                <form method="POST" action="<?= BASE_URL ?>/google_backup.php" style="margin:0;">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i data-lucide="cloud-upload" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                        <?= __('google_sync_backup_now') ?>
-                    </button>
-                </form>
-                <form method="POST" action="<?= BASE_URL ?>/google_restore_preview.php" style="margin:0;">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <button type="submit" class="btn btn-outline btn-sm">
-                        <i data-lucide="search-check" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                        <?= __('google_sync_check_backup') ?>
-                    </button>
-                </form>
-                <form method="POST" action="<?= BASE_URL ?>/google_disconnect.php" style="margin:0;">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <button type="submit" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;">
-                        <i data-lucide="unlink" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                        <?= __('google_sync_disconnect') ?>
-                    </button>
-                </form>
-            <?php elseif ($googleSyncConfigured): ?>
-                <span class="google-sync-pill warn">
-                    <i data-lucide="plug" style="width:14px;height:14px;"></i>
-                    <?= __('google_sync_status_ready') ?>
-                </span>
-                <a href="<?= BASE_URL ?>/google_connect.php" class="btn btn-primary btn-sm">
-                    <i data-lucide="link" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                    <?= __('google_sync_connect') ?>
-                </a>
-            <?php else: ?>
-                <span class="google-sync-pill warn">
-                    <i data-lucide="settings" style="width:14px;height:14px;"></i>
-                    <?= __('google_sync_status_config') ?>
-                </span>
-                <a href="<?= BASE_URL ?>/google_connect.php" class="btn btn-outline btn-sm">
-                    <i data-lucide="settings" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                    <?= __('google_sync_connect') ?>
-                </a>
-            <?php endif; ?>
-        </div>
-        <div class="google-sync-meta">
-            <?= __('google_sync_phase_note') ?><br>
-            <?php if (!$googleSyncConfigured): ?>
-                <?= __('google_sync_config_help') ?><br>
-            <?php endif; ?>
-            <?php if ($googleConnection && !empty($googleConnection['last_sync_at'])): ?>
-                <?= __('google_sync_last_backup') ?>: <?= htmlspecialchars(date('d/m/Y H:i', strtotime($googleConnection['last_sync_at']))) ?><br>
-            <?php endif; ?>
-            <?= __('google_sync_redirect_uri') ?>: <code><?= htmlspecialchars($googleRedirectUri) ?></code>
-        </div>
-        <div class="google-sync-meta" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;margin-top:1rem;">
-            <strong style="display:block;color:#1e293b;margin-bottom:.35rem;"><?= __('google_calendar_title') ?></strong>
-            <?php if ($googleConnection && $googleCalendarReady): ?>
-                <span class="google-sync-pill ok">
-                    <i data-lucide="calendar-check" style="width:14px;height:14px;"></i>
-                    <?= __('google_calendar_status_ready') ?>
-                </span>
-                <form method="POST" action="<?= BASE_URL ?>/google_calendar_sync.php" style="display:inline-flex;margin-left:.5rem;"
-                      onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('google_calendar_sync_confirm')), ENT_QUOTES) ?>)">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i data-lucide="calendar-plus" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                        <?= __('google_calendar_sync_now') ?>
-                    </button>
-                </form>
-                <form method="POST" action="<?= BASE_URL ?>/google_calendar_cleanup.php" style="display:inline-flex;margin-left:.5rem;"
-                      onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('google_calendar_resync_confirm')), ENT_QUOTES) ?>)">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <input type="hidden" name="calendar_action" value="resync">
-                    <button type="submit" class="btn btn-outline btn-sm">
-                        <i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                        <?= __('google_calendar_resync_now') ?>
-                    </button>
-                </form>
-                <form method="POST" action="<?= BASE_URL ?>/google_calendar_cleanup.php" style="display:inline-flex;margin-left:.5rem;"
-                      onsubmit="return confirm(<?= htmlspecialchars(json_encode(__('google_calendar_remove_confirm')), ENT_QUOTES) ?>)">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                    <input type="hidden" name="calendar_action" value="remove">
-                    <button type="submit" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;">
-                        <i data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                        <?= __('google_calendar_remove_now') ?>
-                    </button>
-                </form>
-            <?php elseif ($googleConnection): ?>
-                <span class="google-sync-pill warn">
-                    <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
-                    <?= __('google_calendar_status_reconnect') ?>
-                </span>
-                <a href="<?= BASE_URL ?>/google_connect.php" class="btn btn-primary btn-sm" style="margin-left:.5rem;">
-                    <i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                    <?= __('google_calendar_reconnect') ?>
-                </a>
-            <?php else: ?>
-                <span class="google-sync-pill warn">
-                    <i data-lucide="calendar-plus" style="width:14px;height:14px;"></i>
-                    <?= __('google_calendar_status_connect') ?>
-                </span>
-            <?php endif; ?>
-            <?php if ($googleConnection && !empty($googleConnection['calendar_last_sync_at'])): ?>
-            <p style="font-size:.78rem;color:#64748b;margin:.7rem 0 0;">
-                <?= __('google_calendar_last_sync') ?>: <?= htmlspecialchars(date('d/m/Y H:i', strtotime($googleConnection['calendar_last_sync_at']))) ?>
-            </p>
-            <?php endif; ?>
-            <?php if ($googleConnection && is_array($googleCalendarSyncCounts)): ?>
-            <p style="font-size:.78rem;color:#166534;margin:.7rem 0 0;">
-                <?= sprintf(
-                    __('google_calendar_sync_counts'),
-                    (int) $googleCalendarSyncCounts['created'],
-                    (int) $googleCalendarSyncCounts['updated'],
-                    (int) $googleCalendarSyncCounts['total']
-                ) ?>
-            </p>
-            <?php endif; ?>
-            <?php if ($googleConnection && is_array($googleCalendarCleanupCounts)): ?>
-            <p style="font-size:.78rem;color:#166534;margin:.7rem 0 0;">
-                <?= sprintf(
-                    __('google_calendar_cleanup_counts'),
-                    (int) $googleCalendarCleanupCounts['deleted'],
-                    (int) $googleCalendarCleanupCounts['missing'],
-                    (int) $googleCalendarCleanupCounts['total']
-                ) ?>
-            </p>
-            <?php endif; ?>
-            <?php if ($googleConnection && is_array($googleCalendarResyncCounts)): ?>
-            <p style="font-size:.78rem;color:#166534;margin:.7rem 0 0;">
-                <?= sprintf(
-                    __('google_calendar_resync_counts'),
-                    (int) $googleCalendarResyncCounts['removed']['deleted'],
-                    (int) $googleCalendarResyncCounts['removed']['missing'],
-                    (int) $googleCalendarResyncCounts['synced']['created'],
-                    (int) $googleCalendarResyncCounts['synced']['updated']
-                ) ?>
-            </p>
-            <?php endif; ?>
-            <p style="font-size:.78rem;color:#64748b;margin:.7rem 0 0;">
-                <?= __('google_calendar_phase_note') ?>
-            </p>
-            <?php if ($googleConnection): ?>
-            <form method="POST" action="<?= BASE_URL ?>/google_calendar_settings.php" style="margin-top:.75rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                <label style="font-size:.78rem;font-weight:700;color:#374151;" for="calendar-reminder-mode">
-                    <?= __('google_calendar_reminder_label') ?>
-                </label>
-                <select id="calendar-reminder-mode" name="calendar_reminder_mode" class="form-control" style="max-width:220px;">
-                    <?php foreach (googleSyncCalendarReminderModes() as $mode): ?>
-                    <option value="<?= htmlspecialchars($mode) ?>" <?= $googleCalendarReminderMode === $mode ? 'selected' : '' ?>>
-                        <?= htmlspecialchars(__('google_calendar_reminder_' . $mode)) ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-                <button type="submit" class="btn btn-outline btn-sm">
-                    <i data-lucide="save" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                    <?= __('google_calendar_save') ?>
-                </button>
-            </form>
-            <?php endif; ?>
-        </div>
-        <?php if ($googleConnection && is_array($googleRestorePreview)): ?>
-        <div class="google-sync-meta" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;margin-top:1rem;">
-            <strong style="display:block;color:#1e293b;margin-bottom:.35rem;"><?= __('google_sync_preview_title') ?></strong>
-            <?= sprintf(
-                __('google_sync_preview_counts'),
-                htmlspecialchars($googleRestorePreview['version'] ?: '-'),
-                htmlspecialchars($googleRestorePreview['exported_at'] ?: '-'),
-                (int) $googleRestorePreview['progress_count'],
-                (int) $googleRestorePreview['plans_count'],
-                (int) $googleRestorePreview['exclusions_count'],
-                (int) $googleRestorePreview['inclusions_count'],
-                (int) $googleRestorePreview['achievements_count']
-            ) ?>
-            <form method="POST" action="<?= BASE_URL ?>/google_restore.php" style="margin-top:.75rem;">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                <input type="hidden" name="confirm_restore" value="1">
-                <button type="submit" class="btn btn-outline btn-sm" style="color:#b45309;border-color:#f59e0b;"
-                        onclick="return confirm(<?= htmlspecialchars(json_encode(__('google_sync_restore_confirm')), ENT_QUOTES) ?>)">
-                    <i data-lucide="rotate-ccw" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"></i>
-                    <?= __('google_sync_restore_btn') ?>
-                </button>
-            </form>
-        </div>
-        <?php endif; ?>
-        <?php if ($googleConnection && is_array($googleRestoreCounts)): ?>
-        <div class="google-sync-meta" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem;margin-top:1rem;color:#166534;">
-            <?= sprintf(
-                __('google_sync_restore_counts'),
-                (int) $googleRestoreCounts['progress'],
-                (int) $googleRestoreCounts['plans'],
-                (int) $googleRestoreCounts['exclusions'],
-                (int) $googleRestoreCounts['inclusions'],
-                (int) $googleRestoreCounts['achievements']
-            ) ?>
-        </div>
-        <?php endif; ?>
-    </div>
 
     <form method="POST" id="settings-form">
         <input type="hidden" name="csrf_token"   value="<?= csrfToken() ?>">
