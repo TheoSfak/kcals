@@ -1640,77 +1640,6 @@ require_once __DIR__ . '/includes/header.php';
     </div>
     <?php endif; ?>
 
-    <?php if (!empty($planHistory)): ?>
-    <section id="plan-history" class="plan-history no-print">
-        <div class="plan-history-header">
-            <div>
-                <h2><?= __('plan_history_title') ?></h2>
-                <p><?= __('plan_history_desc') ?></p>
-            </div>
-            <span><?= sprintf(__('plan_history_count'), count($planHistory)) ?></span>
-        </div>
-        <div class="plan-history-list">
-            <?php foreach ($planHistory as $historyPlan): ?>
-            <?php
-                $historyData = json_decode($historyPlan['plan_data_json'], true);
-                $historySummary = kcalsPlanHistorySummary($historyData, $mainCookingFamilies);
-                $isCurrentHistoryPlan = $plan && (int) $historyPlan['id'] === (int) $plan['id'];
-                $isPreviewHistoryPlan = $isHistoryPreview && $viewPlan && (int) $historyPlan['id'] === (int) $viewPlan['id'];
-                $qualitySummaryParts = [];
-                foreach (['easy', 'balanced', 'watch', 'heavy'] as $qualityStatus) {
-                    $count = (int) ($historySummary['quality_counts'][$qualityStatus] ?? 0);
-                    if ($count > 0) {
-                        $qualitySummaryParts[] = sprintf(__('plan_history_quality_' . $qualityStatus), $count);
-                    }
-                }
-            ?>
-            <div class="plan-history-item<?= $isCurrentHistoryPlan ? ' is-current' : '' ?><?= $isPreviewHistoryPlan ? ' is-previewed' : '' ?>">
-                <div class="plan-history-main">
-                    <div class="plan-history-title">
-                        <strong><?= htmlspecialchars(date('d/m/Y H:i', strtotime($historyPlan['created_at']))) ?></strong>
-                        <?php if ($isCurrentHistoryPlan): ?>
-                        <span><?= __('plan_history_current') ?></span>
-                        <?php endif; ?>
-                        <?php if ($isPreviewHistoryPlan): ?>
-                        <span class="is-preview"><?= __('plan_history_preview_badge') ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="plan-history-meta">
-                        <span><?= htmlspecialchars($historyPlan['start_date']) ?> → <?= htmlspecialchars($historyPlan['end_date']) ?></span>
-                        <span><?= (int) $historyPlan['target_calories'] ?> kcal</span>
-                        <span><?= sprintf(__('plan_history_avg'), (int) $historySummary['avg_kcal']) ?></span>
-                        <?php if ((int) $historySummary['locked_count'] > 0): ?>
-                        <span><?= sprintf(__('plan_quality_locked'), (int) $historySummary['locked_count']) ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <?php if (!empty($qualitySummaryParts)): ?>
-                    <div class="plan-history-quality"><?= htmlspecialchars(implode(' · ', $qualitySummaryParts)) ?></div>
-                    <?php endif; ?>
-                </div>
-                <?php if (!$isCurrentHistoryPlan): ?>
-                <div class="plan-history-actions">
-                    <a href="<?= BASE_URL ?>/plan.php?preview_plan_id=<?= (int) $historyPlan['id'] ?>#plan-preview" class="btn btn-outline btn-sm">
-                        <i data-lucide="eye" style="width:13px;height:13px;"></i>
-                        <?= __('plan_history_preview_btn') ?>
-                    </a>
-                    <form method="POST" action="<?= BASE_URL ?>/plan.php" class="plan-history-restore">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
-                        <input type="hidden" name="action" value="restore_plan">
-                        <input type="hidden" name="restore_plan_id" value="<?= (int) $historyPlan['id'] ?>">
-                        <button type="submit" class="btn btn-outline btn-sm"
-                                onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_history_restore_confirm')), ENT_QUOTES) ?>)">
-                            <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
-                            <?= __('plan_history_restore_btn') ?>
-                        </button>
-                    </form>
-                </div>
-                <?php endif; ?>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </section>
-    <?php endif; ?>
-
     <!-- 7-Day Grid -->
     <div class="no-print">
     <div class="plan-grid" id="plan-preview">
@@ -1897,6 +1826,77 @@ require_once __DIR__ . '/includes/header.php';
         <?php endforeach; ?>
     </div>
     </div><!-- /no-print plan-grid wrapper -->
+
+    <?php if (!empty($planHistory)): ?>
+    <section id="plan-history" class="plan-history no-print">
+        <div class="plan-history-header">
+            <div>
+                <h2><?= __('plan_history_title') ?></h2>
+                <p><?= __('plan_history_desc') ?></p>
+            </div>
+            <span><?= sprintf(__('plan_history_count'), count($planHistory)) ?></span>
+        </div>
+        <div class="plan-history-list">
+            <?php foreach ($planHistory as $historyPlan): ?>
+            <?php
+                $historyData = json_decode($historyPlan['plan_data_json'], true);
+                $historySummary = kcalsPlanHistorySummary($historyData, $mainCookingFamilies);
+                $isCurrentHistoryPlan = $plan && (int) $historyPlan['id'] === (int) $plan['id'];
+                $isPreviewHistoryPlan = $isHistoryPreview && $viewPlan && (int) $historyPlan['id'] === (int) $viewPlan['id'];
+                $qualitySummaryParts = [];
+                foreach (['easy', 'balanced', 'watch', 'heavy'] as $qualityStatus) {
+                    $count = (int) ($historySummary['quality_counts'][$qualityStatus] ?? 0);
+                    if ($count > 0) {
+                        $qualitySummaryParts[] = sprintf(__('plan_history_quality_' . $qualityStatus), $count);
+                    }
+                }
+            ?>
+            <div class="plan-history-item<?= $isCurrentHistoryPlan ? ' is-current' : '' ?><?= $isPreviewHistoryPlan ? ' is-previewed' : '' ?>">
+                <div class="plan-history-main">
+                    <div class="plan-history-title">
+                        <strong><?= htmlspecialchars(date('d/m/Y H:i', strtotime($historyPlan['created_at']))) ?></strong>
+                        <?php if ($isCurrentHistoryPlan): ?>
+                        <span><?= __('plan_history_current') ?></span>
+                        <?php endif; ?>
+                        <?php if ($isPreviewHistoryPlan): ?>
+                        <span class="is-preview"><?= __('plan_history_preview_badge') ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="plan-history-meta">
+                        <span><?= htmlspecialchars($historyPlan['start_date']) ?> → <?= htmlspecialchars($historyPlan['end_date']) ?></span>
+                        <span><?= (int) $historyPlan['target_calories'] ?> kcal</span>
+                        <span><?= sprintf(__('plan_history_avg'), (int) $historySummary['avg_kcal']) ?></span>
+                        <?php if ((int) $historySummary['locked_count'] > 0): ?>
+                        <span><?= sprintf(__('plan_quality_locked'), (int) $historySummary['locked_count']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($qualitySummaryParts)): ?>
+                    <div class="plan-history-quality"><?= htmlspecialchars(implode(' · ', $qualitySummaryParts)) ?></div>
+                    <?php endif; ?>
+                </div>
+                <?php if (!$isCurrentHistoryPlan): ?>
+                <div class="plan-history-actions">
+                    <a href="<?= BASE_URL ?>/plan.php?preview_plan_id=<?= (int) $historyPlan['id'] ?>#plan-preview" class="btn btn-outline btn-sm">
+                        <i data-lucide="eye" style="width:13px;height:13px;"></i>
+                        <?= __('plan_history_preview_btn') ?>
+                    </a>
+                    <form method="POST" action="<?= BASE_URL ?>/plan.php" class="plan-history-restore">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken()) ?>">
+                        <input type="hidden" name="action" value="restore_plan">
+                        <input type="hidden" name="restore_plan_id" value="<?= (int) $historyPlan['id'] ?>">
+                        <button type="submit" class="btn btn-outline btn-sm"
+                                onclick="return confirm(<?= htmlspecialchars(json_encode(__('plan_history_restore_confirm')), ENT_QUOTES) ?>)">
+                            <i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>
+                            <?= __('plan_history_restore_btn') ?>
+                        </button>
+                    </form>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
 
     <?php else: ?>
     <div class="card" style="text-align:center; padding:3rem 1.5rem;">
