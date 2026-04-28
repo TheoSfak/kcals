@@ -112,6 +112,7 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
             <?php if ($isLoggedIn): ?>
                 <li><a href="<?= BASE_URL ?>/dashboard.php"  class="<?= $activeNav==='dashboard' ? 'active':'' ?>"><i data-lucide="layout-dashboard"></i><?= __('nav_dashboard') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/plan.php"        class="<?= $activeNav==='plan' ? 'active':'' ?>"><i data-lucide="calendar"></i><?= __('nav_plan') ?></a></li>
+                <li><a href="<?= BASE_URL ?>/meal_prep.php"   class="<?= $activeNav==='prep' ? 'active':'' ?>"><i data-lucide="chef-hat"></i><?= __('nav_prep') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/progress.php"    class="<?= $activeNav==='progress' ? 'active':'' ?>"><i data-lucide="trending-up"></i><?= __('nav_progress') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/tips.php"        class="<?= $activeNav==='tips' ? 'active':'' ?>"><i data-lucide="lightbulb"></i><?= __('nav_tips') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/settings.php"    class="<?= $activeNav==='preferences' ? 'active':'' ?>"><i data-lucide="sliders-horizontal"></i><?= __('nav_preferences') ?></a></li>

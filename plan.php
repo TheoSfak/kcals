@@ -1435,6 +1435,10 @@ require_once __DIR__ . '/includes/header.php';
                 </button>
             </form>
             <?php if ($plan): ?>
+            <a href="<?= BASE_URL ?>/meal_prep.php" class="btn btn-outline">
+                <i data-lucide="chef-hat" style="width:15px;height:15px;"></i>
+                <?= __('plan_prep') ?>
+            </a>
             <a href="<?= BASE_URL ?>/shopping.php" class="btn btn-outline">
                 <i data-lucide="shopping-cart" style="width:15px;height:15px;"></i>
                 <?= __('plan_shopping') ?>
