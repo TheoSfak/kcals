@@ -23,3 +23,5 @@ productive-site/
 
 # One-shot patch helper (generated on demand, never shipped in releases)
 _kcals_patch.php
+
+/vendor/

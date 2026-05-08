@@ -1,0 +1,14 @@
+{
+    "name": "TheoSfak/kcals",
+    "description": "A modern PHP + MySQL wellness web app that delivers personalised weekly meal plans using the Mifflin-St Jeor algorithm, psychological zone tracking, and progress monitoring.",
+    "type": "project",
+    "require": {
+        "squizlabs/php_codesniffer": "^4.0"
+    },
+    "authors": [
+        {
+            "name": "TheoSfak"
+        }
+    ],
+    "minimum-stability": "stable"
+}
