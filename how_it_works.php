@@ -18,7 +18,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="hiw-hero-inner">
             <div class="hiw-hero-badge">
                 <i data-lucide="flask-conical" style="width:14px;height:14px;vertical-align:-2px;"></i>
-                Science-backed • Transparent • No black boxes
+                <?= __('hiw_hero_badge') ?>
             </div>
             <h1><?= __('hiw_hero_title') ?></h1>
             <p><?= __('hiw_hero_sub') ?></p>
@@ -130,6 +130,12 @@ require_once __DIR__ . '/includes/header.php';
         <?php
         $mealCards = [
             ['hiw_builder_title', 'hiw_builder_body', 'utensils'],
+            ['hiw_cooking_load_title', 'hiw_cooking_load_body', 'chef-hat'],
+            ['hiw_must_include_title', 'hiw_must_include_body', 'list-plus'],
+            ['hiw_meal_controls_title', 'hiw_meal_controls_body', 'refresh-cw'],
+            ['hiw_day_controls_title', 'hiw_day_controls_body', 'calendar-sync'],
+            ['hiw_quality_title', 'hiw_quality_body', 'gauge'],
+            ['hiw_history_title', 'hiw_history_body', 'history'],
             ['hiw_macros_title',  'hiw_macros_body',  'pie-chart'],
             ['hiw_buffer_title',  'hiw_buffer_body',  'calendar-heart'],
         ];
@@ -156,6 +162,7 @@ require_once __DIR__ . '/includes/header.php';
         $prefCards = [
             ['hiw_event_title', 'hiw_event_body', 'calendar-clock'],
             ['hiw_prefs_title', 'hiw_prefs_body', 'leaf'],
+            ['hiw_student_mode_title', 'hiw_student_mode_body', 'timer'],
         ];
         foreach ($prefCards as [$titleKey, $bodyKey, $icon]): ?>
         <div class="hiw-card">

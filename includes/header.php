@@ -8,7 +8,14 @@
 // ============================================================
 require_once __DIR__ . '/auth.php';
 
-$pageTitle  = $pageTitle ?? 'KCALS – Smart Nutrition';
+// Load general settings (site name, tagline)
+$_genSettings = function_exists('getSettings')
+    ? getSettings(['general_site_name','general_tagline'])
+    : [];
+$_siteName = trim($_genSettings['general_site_name'] ?? '') ?: 'KCALS';
+$_tagline  = trim($_genSettings['general_tagline']  ?? '') ?: 'Smart Nutrition & Wellness';
+
+$pageTitle  = $pageTitle ?? ($_siteName . ' – ' . $_tagline);
 $activeNav  = $activeNav ?? '';
 $isLoggedIn = isLoggedIn();
 $_lang      = $GLOBALS['_kcals_lang'] ?? 'en';
@@ -20,7 +27,7 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?></title>
-    <meta name="description" content="KCALS – Personalised weekly nutrition plans, progress tracking and wellness tips.">
+    <meta name="description" content="<?= htmlspecialchars($_siteName . ' – ' . $_tagline) ?> | Personalised weekly nutrition plans, progress tracking and wellness tips.">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +38,40 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <!-- App CSS -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
+    <!-- ===== Appearance Overrides (admin-controlled) ===== -->
+    <?php
+    $appKeys = ['appearance_accent','appearance_accent_dark','appearance_bg',
+                'appearance_font_family','appearance_font_size','appearance_border_radius'];
+    $appSettings = function_exists('getSettings') ? getSettings($appKeys) : [];
+    $accent      = preg_match('/^#[0-9a-fA-F]{3,6}$/', $appSettings['appearance_accent']       ?? '') ? $appSettings['appearance_accent']      : null;
+    $accentDark  = preg_match('/^#[0-9a-fA-F]{3,6}$/', $appSettings['appearance_accent_dark']  ?? '') ? $appSettings['appearance_accent_dark']  : null;
+    $bgCol       = preg_match('/^#[0-9a-fA-F]{3,6}$/', $appSettings['appearance_bg']           ?? '') ? $appSettings['appearance_bg']           : null;
+    $fontFam     = $appSettings['appearance_font_family'] ?? '';
+    $fontSize    = (int) ($appSettings['appearance_font_size']    ?? 16);
+    $radius      = (int) ($appSettings['appearance_border_radius'] ?? 14);
+    $allowedFonts = ['Inter','Roboto','Lato','Poppins','Open Sans','Nunito','Source Sans Pro'];
+    $fontFam     = in_array($fontFam, $allowedFonts, true) ? $fontFam : null;
+    $fontSize    = ($fontSize >= 12 && $fontSize <= 22) ? $fontSize : null;
+    $radius      = ($radius  >= 0  && $radius  <= 30)  ? $radius  : null;
+    $hasOverrides = $accent || $accentDark || $bgCol || $fontFam || $fontSize !== null || $radius !== null;
+    if ($hasOverrides):
+        // Load Google Font if not Inter
+        if ($fontFam && $fontFam !== 'Inter'):
+            $gfSlug = str_replace(' ', '+', $fontFam);
+    ?>
+    <link href="https://fonts.googleapis.com/css2?family=<?= htmlspecialchars($gfSlug) ?>:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <?php endif; ?>
+    <style>
+    :root {
+        <?= $accent     ? "--green:      {$accent};".PHP_EOL        : '' ?>
+        <?= $accentDark ? "--green-dark: {$accentDark};".PHP_EOL    : '' ?>
+        <?= $bgCol      ? "--bg:         {$bgCol};".PHP_EOL         : '' ?>
+        <?= $radius !== null ? "--radius: {$radius}px;".PHP_EOL     : '' ?>
+    }
+    <?= $fontFam   ? "body, button, input, select, textarea { font-family: '{$fontFam}', sans-serif; }" : '' ?>
+    <?= $fontSize !== null ? "html { font-size: {$fontSize}px; }" : '' ?>
+    </style>
+    <?php endif; ?>
 </head>
 <body>
 
@@ -65,12 +106,13 @@ $_back      = urlencode($_SERVER['REQUEST_URI'] ?? '/');
 
 <nav class="navbar">
     <div class="navbar-inner">
-        <a class="navbar-brand" href="<?= BASE_URL ?>/index.php">KCALS<span>.</span></a>
+        <a class="navbar-brand" href="<?= BASE_URL ?>/index.php"><?= htmlspecialchars($_siteName) ?><span>.</span></a>
 
         <ul class="navbar-nav">
             <?php if ($isLoggedIn): ?>
                 <li><a href="<?= BASE_URL ?>/dashboard.php"  class="<?= $activeNav==='dashboard' ? 'active':'' ?>"><i data-lucide="layout-dashboard"></i><?= __('nav_dashboard') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/plan.php"        class="<?= $activeNav==='plan' ? 'active':'' ?>"><i data-lucide="calendar"></i><?= __('nav_plan') ?></a></li>
+                <li><a href="<?= BASE_URL ?>/meal_prep.php"   class="<?= $activeNav==='prep' ? 'active':'' ?>"><i data-lucide="chef-hat"></i><?= __('nav_prep') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/progress.php"    class="<?= $activeNav==='progress' ? 'active':'' ?>"><i data-lucide="trending-up"></i><?= __('nav_progress') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/tips.php"        class="<?= $activeNav==='tips' ? 'active':'' ?>"><i data-lucide="lightbulb"></i><?= __('nav_tips') ?></a></li>
                 <li><a href="<?= BASE_URL ?>/settings.php"    class="<?= $activeNav==='preferences' ? 'active':'' ?>"><i data-lucide="sliders-horizontal"></i><?= __('nav_preferences') ?></a></li>

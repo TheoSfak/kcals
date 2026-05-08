@@ -317,15 +317,13 @@ require_once __DIR__ . '/includes/header.php';
 
 <!-- ==================== CTA BOTTOM ==================== -->
 <section class="lp-cta-section">
-    <div class="container-sm text-center">
-        <div class="lp-cta-inner">
-            <h2 style="font-size:clamp(1.6rem,4vw,2.4rem); font-weight:900; margin-bottom:1rem;"><?= __('cta_title') ?></h2>
-            <p style="color:rgba(255,255,255,0.82); font-size:1.05rem; margin-bottom:2rem;"><?= __('cta_sub') ?></p>
-            <a href="<?= BASE_URL ?>/register.php" class="btn btn-lg" style="background:#fff; color:var(--green-dark); font-weight:700;">
-                <i data-lucide="rocket" style="width:18px;height:18px;"></i>
-                <?= __('cta_btn') ?>
-            </a>
-        </div>
+    <div class="lp-cta-inner">
+        <h2 style="font-size:clamp(1.8rem,4.5vw,2.8rem); font-weight:900; margin-bottom:1rem; color:#fff;"><?= __('cta_title') ?></h2>
+        <p style="color:rgba(255,255,255,0.88); font-size:1.1rem; line-height:1.7; margin-bottom:2.25rem;"><?= __('cta_sub') ?></p>
+        <a href="<?= BASE_URL ?>/register.php" class="btn btn-lg" style="background:#fff; color:var(--green-dark); font-weight:700; font-size:1rem;">
+            <i data-lucide="rocket" style="width:18px;height:18px;"></i>
+            <?= __('cta_btn') ?>
+        </a>
     </div>
 </section>
 

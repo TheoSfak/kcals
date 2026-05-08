@@ -19,6 +19,14 @@ class MealBuilder
     private bool   $strengthDay; // true when last workout was strength training (further protein shift)
     private bool   $complexCarbBias; // true on Hormetic Recharge Day (v0.9.5): carb ratio raised to 55%
     private bool   $comfortFoodMode; // true in Recovery Mode (v0.9.6): picks dairy/carb comfort foods for snack
+    private ?int   $maxPrepMinutes;
+    private array  $avoidMealFamilies;
+    private bool   $quickMainOnly;
+    private bool   $superSimple;
+    private array  $weeklyFamilyCounts;
+    private array  $weeklyFoodCounts;
+    private array  $weeklyTypeCounts;
+    private array  $pantryCaps;
 
     /**
      * @param array $profile  Optional preference profile:
@@ -31,12 +39,37 @@ class MealBuilder
         $this->month     = $month;
         $this->dislikes  = array_map('mb_strtolower', $dislikes);
         $this->adventure  = (int) ($profile['adventure']    ?? 2);
+        $this->superSimple = $this->adventure === 0;
         $this->allergies  = (array) ($profile['allergies']   ?? []);
         $this->excluded   = array_map('intval', (array) ($profile['excluded_ids'] ?? []));
         $this->sleepBoost       = (bool) ($profile['sleep_boost']        ?? false);
         $this->strengthDay     = (bool) ($profile['strength_day']      ?? false);
         $this->complexCarbBias = (bool) ($profile['complex_carb_bias'] ?? false);
         $this->comfortFoodMode = (bool) ($profile['comfort_food_mode'] ?? false);
+        $this->maxPrepMinutes = isset($profile['max_prep_minutes']) ? max(1, (int) $profile['max_prep_minutes']) : ($this->superSimple ? 20 : null);
+        $this->avoidMealFamilies = array_values(array_unique(array_merge(
+            $this->superSimple ? ['heavy_mixed', 'shellfish', 'red_meat', 'pork', 'lamb'] : [],
+            array_map(
+            'strval',
+            (array) ($profile['avoid_meal_families'] ?? [])
+            )
+        )));
+        $this->quickMainOnly = (bool) ($profile['quick_main_only'] ?? false) || $this->superSimple;
+        $this->weeklyFamilyCounts = [];
+        foreach ((array) ($profile['weekly_family_counts'] ?? []) as $key => $value) {
+            $this->weeklyFamilyCounts[(string) $key] = (int) $value;
+        }
+        $this->weeklyFoodCounts = [];
+        foreach ((array) ($profile['weekly_food_counts'] ?? []) as $key => $value) {
+            $this->weeklyFoodCounts[(int) $key] = (int) $value;
+        }
+        $this->weeklyTypeCounts = [];
+        foreach ((array) ($profile['weekly_type_counts'] ?? []) as $key => $value) {
+            $this->weeklyTypeCounts[(string) $key] = (int) $value;
+        }
+        $this->pantryCaps = $this->superSimple
+            ? ['carb' => 4, 'vegetable' => 6, 'fruit' => 4, 'fat' => 3, 'dairy' => 6]
+            : ['carb' => 8, 'vegetable' => 12, 'fruit' => 7, 'fat' => 5, 'dairy' => 8];
     }
 
     // ──────────────────────────────────────────────────────────
@@ -67,36 +100,63 @@ class MealBuilder
             default     => [],
         };
 
-        // Aggregate totals
-        $totalCal = $totalP = $totalC = $totalF = 0;
-        foreach ($components as $c) {
-            $totalCal += $c['cal'];
-            $totalP   += $c['protein_g'];
-            $totalC   += $c['carbs_g'];
-            $totalF   += $c['fat_g'];
+        return $this->assembleMeal($slot, $components);
+    }
+
+    /**
+     * Build a meal around a specific user-requested food.
+     * Returns null when the food is incompatible with this slot/profile.
+     */
+    public function buildMealWithFood(
+        string $slot,
+        int $targetKcal,
+        int $foodId,
+        array $usedWeek  = [],
+        array $usedToday = []
+    ): ?array {
+        $food = $this->findFoodByIdForSlot($foodId, $slot);
+        if (!$food) {
+            return null;
         }
 
-        [$nameEl, $nameEn] = $this->buildName($slot, $components);
+        $foodType = $food['food_type'] ?? '';
+        $share = match ($foodType) {
+            'mixed'   => 0.72,
+            'protein' => ($slot === 'breakfast' || $slot === 'snack') ? 0.42 : 0.48,
+            'carb'    => ($slot === 'snack') ? 0.45 : 0.38,
+            'dairy'   => 0.42,
+            'fruit'   => 0.32,
+            'fat'     => 0.18,
+            'vegetable'=> 0.16,
+            default   => 0.35,
+        };
 
-        $prep = 5;
-        if (!empty($components)) {
-            $prep = max(array_column($components, 'prep_minutes'));
-        }
-        if ($slot === 'lunch' || $slot === 'dinner') {
-            $prep = max($prep, 15);
+        $forced = $this->calc($food, $targetKcal * $share);
+        $forced['is_forced_include'] = true;
+        $excludeForced = array_merge($usedWeek, $usedToday, [$foodId]);
+        $baseTarget = max(120, $targetKcal - (int) $forced['cal']);
+        $baseMeal = $this->buildMeal($slot, $baseTarget, $excludeForced, $excludeForced);
+
+        $components = [$forced];
+        foreach ($baseMeal['components'] as $component) {
+            if (in_array($foodType, ['protein', 'dairy', 'mixed'], true)) {
+                $componentType = (string) ($component['food_type'] ?? '');
+                $componentEffort = (string) ($component['cooking_effort'] ?? '');
+                if ($foodType === 'mixed' && $componentType === 'carb') {
+                    continue;
+                }
+                if (in_array($componentType, ['protein', 'dairy', 'mixed'], true) || $componentEffort === 'main_cooking') {
+                    continue;
+                }
+            }
+            if ((int) ($component['food_id'] ?? 0) !== $foodId) {
+                $components[] = $component;
+            }
         }
 
-        return [
-            'slot'         => $slot,
-            'name_el'      => $nameEl,
-            'name_en'      => $nameEn,
-            'calories'     => (int) round($totalCal),
-            'protein_g'    => (int) round($totalP),
-            'carbs_g'      => (int) round($totalC),
-            'fat_g'        => (int) round($totalF),
-            'prep_minutes' => (int) $prep,
-            'components'   => $components,
-        ];
+        $meal = $this->assembleMeal($slot, $components);
+        $meal['included_food_id'] = $foodId;
+        return $meal;
     }
 
     // ──────────────────────────────────────────────────────────
@@ -109,12 +169,13 @@ class MealBuilder
 
         if ($isKeto) {
             // Keto breakfast: protein/dairy + fat + keto-ok fruit (berries)
-            $excl    = $usedWeek;
-            $protein = $this->pick('protein|dairy', 'breakfast', $excl);
-            if ($protein) $excl[] = (int) $protein['id'];
-            $fat     = $this->pick('fat', 'breakfast', $excl);
-            if ($fat)     $excl[] = (int) $fat['id'];
-            $fruit   = $this->pick('fruit', 'breakfast', $excl);
+            $proteinExcl = $usedWeek;
+            $protein = $this->pick('protein|dairy', 'breakfast', $proteinExcl);
+            $localExcl = [];
+            if ($protein) $localExcl[] = (int) $protein['id'];
+            $fat     = $this->pick('fat', 'breakfast', $localExcl, true);
+            if ($fat)     $localExcl[] = (int) $fat['id'];
+            $fruit   = $this->pick('fruit', 'breakfast', $localExcl, true);
 
             $components = [];
             if ($protein) $components[] = $this->calc($protein, $target * 0.50);
@@ -124,13 +185,13 @@ class MealBuilder
         }
 
         // Standard / vegan / vegetarian / paleo / gf
-        $excl    = $usedWeek;
-        $carb    = $this->pick('carb',          'breakfast', $excl);
-        if ($carb)    $excl[] = (int) $carb['id'];
-        $protein = $this->pick('protein|dairy', 'breakfast', $excl);
-        if ($protein) $excl[] = (int) $protein['id'];
-        $fruit   = $this->pick('fruit',         'breakfast', $excl);
-        if ($fruit)   $excl[] = (int) $fruit['id'];
+        $localExcl = [];
+        $carb    = $this->pick('carb',          'breakfast', $localExcl, true);
+        if ($carb)    $localExcl[] = (int) $carb['id'];
+        $protein = $this->pick('protein|dairy', 'breakfast', array_merge($usedWeek, $localExcl));
+        if ($protein) $localExcl[] = (int) $protein['id'];
+        $fruit   = $this->pick('fruit',         'breakfast', $localExcl, true);
+        if ($fruit)   $localExcl[] = (int) $fruit['id'];
 
         $used = 0.0;
         $components = [];
@@ -172,7 +233,7 @@ class MealBuilder
         // Add fat with any significant remaining budget (happens when carb=null e.g. paleo)
         $remaining = $target - $used;
         if ($remaining > 50) {
-            $fat = $this->pick('fat', 'breakfast', $excl);
+            $fat = $this->pick('fat', 'breakfast', $localExcl, true);
             if ($fat) $components[] = $this->calc($fat, $remaining);
         }
 
@@ -188,24 +249,25 @@ class MealBuilder
         $isKeto = $this->diet === 'keto';
 
         // Protein: try to differ from today's meals; fall back wider if needed
-        $protein = $this->pick('protein', $slot, array_merge($usedWeek, $usedToday));
-        if (!$protein) $protein = $this->pick('protein', $slot, $usedToday);
-        if (!$protein) $protein = $this->pick('protein', $slot, []);
+        $mainTypeExpr = $this->quickMainOnly ? 'protein|dairy' : 'protein';
+        $protein = $this->pick($mainTypeExpr, $slot, array_merge($usedWeek, $usedToday));
+        if (!$protein) $protein = $this->pick($mainTypeExpr, $slot, $usedToday);
+        if (!$protein) $protein = $this->pick($mainTypeExpr, $slot, []);
 
         // Carb (skip for keto)
-        $excl = $usedWeek;
+        $excl = [];
         if ($protein) $excl[] = (int) $protein['id'];
 
         $carb = null;
         if (!$isKeto) {
-            $carb = $this->pick('carb', $slot, $excl);
+            $carb = $this->pick('carb', $slot, $excl, true);
             if ($carb) $excl[] = (int) $carb['id'];
         }
 
         // Two different vegetables
-        $veg1 = $this->pick('vegetable', $slot, $excl);
+        $veg1 = $this->pick('vegetable', $slot, $excl, true);
         if ($veg1) $excl[] = (int) $veg1['id'];
-        $veg2 = $this->pick('vegetable', $slot, $excl);
+        $veg2 = $this->pick('vegetable', $slot, $excl, true);
 
         if (!$protein) return $this->fallback($slot, $target);
 
@@ -217,7 +279,7 @@ class MealBuilder
 
         if ($isKeto) {
             // No carb: shift budget to protein + extra fat + vegetables
-            $extraFat = $this->pick('fat', $slot, array_merge($usedWeek, [(int) $protein['id']]));
+            $extraFat = $this->pick('fat', $slot, [(int) $protein['id']], true);
             if ($protein)  $components[] = $this->calc($protein,  $remaining * 0.56);
             if ($extraFat) $components[] = $this->calc($extraFat, $remaining * 0.24);
             if ($veg1)     $components[] = $this->calc($veg1,     $remaining * 0.12);
@@ -253,32 +315,32 @@ class MealBuilder
 
     private function buildSnack(int $target, array $usedWeek): array
     {
-        $excl = $usedWeek;
+        $excl = [];
 
         if ($this->comfortFoodMode) {
             // Recovery Mode (v0.9.6): comfort-food snack — warm dairy or carb-based
-            $main = $this->pick('dairy|carb', 'snack', $excl);
+            $main = $this->pick('dairy|carb', 'snack', $excl, true);
             if ($main) $excl[] = (int) $main['id'];
-            $sec  = $this->pick('fruit', 'snack', $excl);
+            $sec  = $this->pick('fruit', 'snack', $excl, true);
         } elseif ($this->sleepBoost || $this->strengthDay) {
             // Sleep Factor / Strength Day: always choose a high-satiety dairy/protein snack
-            $main = $this->pick('dairy|protein', 'snack', $excl);
+            $main = $this->pick('dairy|protein', 'snack', $excl, true);
             if ($main) $excl[] = (int) $main['id'];
-            $sec  = $this->pick('fruit', 'snack', $excl);
+            $sec  = $this->pick('fruit', 'snack', $excl, true);
         } else {
             $roll = rand(0, 2);
             if ($roll === 0) {
-                $main = $this->pick('fruit', 'snack', $excl);
+                $main = $this->pick('fruit', 'snack', $excl, true);
                 if ($main) $excl[] = (int) $main['id'];
-                $sec  = $this->pick('fat',   'snack', $excl);
+                $sec  = $this->pick('fat',   'snack', $excl, true);
             } elseif ($roll === 1) {
-                $main = $this->pick('dairy', 'snack', $excl);
+                $main = $this->pick('dairy', 'snack', $excl, true);
                 if ($main) $excl[] = (int) $main['id'];
-                $sec  = $this->pick('fruit', 'snack', $excl);
+                $sec  = $this->pick('fruit', 'snack', $excl, true);
             } else {
-                $main = $this->pick('fruit', 'snack', $excl);
+                $main = $this->pick('fruit', 'snack', $excl, true);
                 if ($main) $excl[] = (int) $main['id'];
-                $sec  = $this->pick('dairy', 'snack', $excl);
+                $sec  = $this->pick('dairy', 'snack', $excl, true);
             }
         }
 
@@ -294,7 +356,7 @@ class MealBuilder
     // Food picker
     // ──────────────────────────────────────────────────────────
 
-    private function pick(string $typeExpr, string $slot, array $excludeIds): ?array
+    private function pick(string $typeExpr, string $slot, array $excludeIds, bool $allowPantryReuse = false): ?array
     {
         $types      = explode('|', $typeExpr);
         $typePH     = implode(',', array_fill(0, count($types), '?'));
@@ -314,7 +376,7 @@ class MealBuilder
 
         // Cuisine adventure filter
         $cuisineSQL = '';
-        if ($this->adventure === 1) {
+        if ($this->adventure <= 1) {
             $cuisineSQL = " AND cuisine_tag IN ('universal','greek')";
         } elseif ($this->adventure === 2) {
             $cuisineSQL = " AND cuisine_tag IN ('universal','greek','mediterranean')";
@@ -342,21 +404,320 @@ class MealBuilder
                    AND available_months LIKE ?
                    AND meal_slots      LIKE ?
                    $dietFilter $cuisineSQL $allergenSQL $excludeSQL
-                 ORDER BY RAND() LIMIT 6";
+                 ORDER BY id LIMIT 120";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
+        $rows = array_values(array_filter(
+            $rows,
+            fn($food) => !$this->isDisliked($food) && $this->foodAllowedForPlanner($food)
+        ));
 
-        // Return first non-disliked food
-        foreach ($rows as $food) {
-            if (!$this->isDisliked($food)) return $food;
+        if (!empty($rows)) {
+            return $this->chooseScoredFood($rows, $slot, $typeExpr, $allowPantryReuse);
         }
 
         // Relax variety constraint and retry once (keep allergen + cuisine filters)
         if (!empty($excludeIds)) {
-            return $this->pick($typeExpr, $slot, []);
+            return $this->pick($typeExpr, $slot, [], $allowPantryReuse);
         }
         return null;
+    }
+
+    private function chooseScoredFood(array $foods, string $slot, string $typeExpr, bool $allowPantryReuse): ?array
+    {
+        if ($allowPantryReuse) {
+            $reusableAvailable = [];
+            foreach ($foods as $food) {
+                $type = (string) ($food['food_type'] ?? '');
+                $foodId = (int) ($food['id'] ?? 0);
+                if (
+                    isset($this->pantryCaps[$type])
+                    && (($this->weeklyTypeCounts[$type] ?? 0) >= $this->pantryCaps[$type])
+                    && (($this->weeklyFoodCounts[$foodId] ?? 0) > 0)
+                ) {
+                    $reusableAvailable[$type] = true;
+                }
+            }
+
+            if (!empty($reusableAvailable)) {
+                $filtered = [];
+                foreach ($foods as $food) {
+                    $type = (string) ($food['food_type'] ?? '');
+                    $foodId = (int) ($food['id'] ?? 0);
+                    if (!empty($reusableAvailable[$type]) && (($this->weeklyFoodCounts[$foodId] ?? 0) <= 0)) {
+                        continue;
+                    }
+                    $filtered[] = $food;
+                }
+                if (!empty($filtered)) {
+                    $foods = $filtered;
+                }
+            }
+        }
+
+        $scored = [];
+        foreach ($foods as $food) {
+            $scored[] = [
+                'food' => $food,
+                'score' => $this->scoreFood($food, $slot, $typeExpr, $allowPantryReuse),
+            ];
+        }
+
+        usort(
+            $scored,
+            fn($a, $b) => $b['score'] <=> $a['score']
+        );
+
+        $poolSize = min(count($scored), $this->superSimple ? 2 : 4);
+        $pool = array_slice($scored, 0, $poolSize);
+        $weights = [];
+        foreach ($pool as $idx => $item) {
+            $weights[$idx] = max(1, 8 - ($idx * 2));
+        }
+
+        $total = array_sum($weights);
+        $roll = random_int(1, $total);
+        foreach ($pool as $idx => $item) {
+            $roll -= $weights[$idx];
+            if ($roll <= 0) {
+                return $item['food'];
+            }
+        }
+
+        return $pool[0]['food'] ?? null;
+    }
+
+    private function scoreFood(array $food, string $slot, string $typeExpr, bool $allowPantryReuse): int
+    {
+        $family = $this->mealFamily($food);
+        $effort = $this->cookingEffort($food);
+        $type = (string) ($food['food_type'] ?? '');
+        $prep = (int) ($food['prep_minutes'] ?? 0);
+        $foodId = (int) ($food['id'] ?? 0);
+        $score = 100;
+
+        $score -= $prep * ($this->superSimple ? 3 : ($this->quickMainOnly ? 2 : 1));
+        $score -= min(45, ($this->weeklyFamilyCounts[$family] ?? 0) * 14);
+        if (($this->weeklyFamilyCounts[$family] ?? 0) >= 4) {
+            $score -= 25;
+        }
+
+        if ($type === 'vegetable') {
+            $score += $prep <= 8 ? 12 : -8;
+        }
+        if ($type === 'carb') {
+            $score += $prep <= 10 ? 10 : -8;
+        }
+
+        if ($allowPantryReuse && isset($this->pantryCaps[$type])) {
+            $usedCount = $this->weeklyFoodCounts[$foodId] ?? 0;
+            $distinctCount = $this->weeklyTypeCounts[$type] ?? 0;
+            $cap = $this->pantryCaps[$type];
+
+            if ($usedCount > 0) {
+                $score += $type === 'vegetable' ? 55 : 42;
+                $score -= min(18, ($usedCount - 1) * 4);
+            } elseif ($distinctCount >= $cap) {
+                $score -= $type === 'vegetable' ? 95 : 70;
+            } elseif ($distinctCount >= max(1, $cap - 2)) {
+                $score -= 25;
+            }
+        }
+
+        if ($slot === 'breakfast') {
+            if (in_array($family, ['dairy', 'eggs', 'fruit', 'carb'], true)) $score += 12;
+            if ($effort === 'main_cooking') $score -= 35;
+        } elseif ($slot === 'snack') {
+            if (in_array($family, ['dairy', 'fruit', 'fat', 'eggs'], true)) $score += 18;
+            if ($prep <= 3) $score += 10;
+            if ($effort !== 'quick') $score -= 25;
+        } elseif ($slot === 'dinner') {
+            if (in_array($family, ['legume', 'dairy', 'eggs', 'plant_protein'], true)) $score += 18;
+            if ($effort === 'quick') $score += 12;
+            if ($family === 'heavy_mixed') $score -= 60;
+            if (in_array($family, ['fish', 'shellfish', 'red_meat', 'pork', 'lamb'], true)) $score -= 12;
+        } else {
+            if ($effort === 'main_cooking') $score += 8;
+            if ($family === 'heavy_mixed') $score += 10;
+        }
+
+        if ($this->superSimple) {
+            if (in_array($family, ['legume', 'dairy', 'eggs', 'plant_protein', 'carb', 'vegetable'], true)) $score += 18;
+            if (in_array($family, ['legume', 'eggs', 'plant_protein'], true) && ($this->weeklyFamilyCounts[$family] ?? 0) < 3) $score += 10;
+            if ($prep <= 5) $score += 16;
+            if ($effort === 'main_cooking') $score -= 30;
+        }
+
+        if ($this->quickMainOnly && in_array($family, ['legume', 'dairy', 'eggs', 'plant_protein'], true)) {
+            $score += 12;
+        }
+
+        // Small jitter keeps weekly plans from becoming identical while preserving ranking.
+        return $score + random_int(0, 6);
+    }
+
+    private function findFoodByIdForSlot(int $foodId, string $slot): ?array
+    {
+        if ($foodId <= 0 || in_array($foodId, $this->excluded, true)) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare('SELECT * FROM foods WHERE id = ? LIMIT 1');
+        $stmt->execute([$foodId]);
+        $food = $stmt->fetch();
+        if (!$food) {
+            return null;
+        }
+
+        if (!$this->foodMatchesProfile($food, $slot)) {
+            return null;
+        }
+
+        return $food;
+    }
+
+    private function foodMatchesProfile(array $food, string $slot): bool
+    {
+        $monthList = array_map('intval', array_filter(explode(',', (string) ($food['available_months'] ?? ''))));
+        if (!in_array($this->month, $monthList, true)) {
+            return false;
+        }
+
+        $slots = array_map('trim', explode(',', (string) ($food['meal_slots'] ?? '')));
+        if ($this->isSubstantialPreparedMain($food)) {
+            if ($slot !== 'lunch' || (!in_array('lunch', $slots, true) && !in_array('dinner', $slots, true))) {
+                return false;
+            }
+        } elseif (!in_array($slot, $slots, true)) {
+            return false;
+        }
+
+        if (!$this->foodMatchesDiet($food)) {
+            return false;
+        }
+
+        if (!$this->foodAllowedForPlanner($food)) {
+            return false;
+        }
+
+        $allergenTags = array_map('trim', explode(',', strtolower((string) ($food['allergen_tags'] ?? ''))));
+        foreach ($this->allergies as $allergen) {
+            if (in_array(strtolower((string) $allergen), $allergenTags, true)) {
+                return false;
+            }
+        }
+
+        return !$this->isDisliked($food);
+    }
+
+    private function foodAllowedForPlanner(array $food): bool
+    {
+        $family = $this->mealFamily($food);
+        if ($this->superSimple) {
+            $type = (string) ($food['food_type'] ?? '');
+            $prep = (int) ($food['prep_minutes'] ?? 0);
+
+            if ($family === 'fish' && $prep > 5) {
+                return false;
+            }
+            if ($type === 'mixed' && $prep > 10) {
+                return false;
+            }
+        }
+
+        if (in_array($family, $this->avoidMealFamilies, true)) {
+            return false;
+        }
+
+        if ($this->maxPrepMinutes !== null && (int) ($food['prep_minutes'] ?? 0) > $this->maxPrepMinutes) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isSubstantialPreparedMain(array $food): bool
+    {
+        if (($food['food_type'] ?? '') !== 'mixed') {
+            return false;
+        }
+
+        $slots = array_map('trim', explode(',', (string) ($food['meal_slots'] ?? '')));
+        if (in_array('breakfast', $slots, true) || in_array('snack', $slots, true)) {
+            return false;
+        }
+
+        return (int) ($food['prep_minutes'] ?? 0) >= 35
+            && (float) ($food['cal_per_100g'] ?? 0) >= 140;
+    }
+
+    private function mealFamily(array $food): string
+    {
+        $name = mb_strtolower(($food['name_en'] ?? '') . ' ' . ($food['name_el'] ?? ''));
+        $allergens = mb_strtolower((string) ($food['allergen_tags'] ?? ''));
+        $type = (string) ($food['food_type'] ?? '');
+
+        if ($this->isSubstantialPreparedMain($food)) {
+            return 'heavy_mixed';
+        }
+        if (str_contains($allergens, 'shellfish') || preg_match('/shrimp|clam|mussel|squid|octopus|prawn|lobster|crab/u', $name)) {
+            return 'shellfish';
+        }
+        if (preg_match('/salmon|swordfish|cod|bass|bream|tilapia|trout|herring|mackerel|halibut|tuna|sardine|anchov/u', $name)) {
+            return 'fish';
+        }
+        if (preg_match('/beef|veal|ribeye|sirloin|tenderloin|bolognese/u', $name)) {
+            return 'red_meat';
+        }
+        if (preg_match('/pork|bacon|ham/u', $name)) {
+            return 'pork';
+        }
+        if (preg_match('/lamb|mutton/u', $name)) {
+            return 'lamb';
+        }
+        if (preg_match('/chicken|turkey|duck|quail/u', $name)) {
+            return 'poultry';
+        }
+        if (preg_match('/egg|omelet|frittata/u', $name)) {
+            return 'eggs';
+        }
+        if ($type === 'dairy' || str_contains($allergens, 'dairy')) {
+            return 'dairy';
+        }
+        if (preg_match('/lentil|bean|chickpea|pea|fava|edamame|soybean|falafel|dal/u', $name)) {
+            return 'legume';
+        }
+        if (preg_match('/tofu|tempeh|seitan/u', $name)) {
+            return 'plant_protein';
+        }
+
+        return $type ?: 'other';
+    }
+
+    private function cookingEffort(array $food): string
+    {
+        $family = $this->mealFamily($food);
+        if (in_array($family, ['heavy_mixed', 'fish', 'shellfish', 'red_meat', 'pork', 'lamb', 'poultry'], true)) {
+            return 'main_cooking';
+        }
+        if ((int) ($food['prep_minutes'] ?? 0) >= 25) {
+            return 'cooked';
+        }
+        return 'quick';
+    }
+
+    private function foodMatchesDiet(array $food): bool
+    {
+        return match ($this->diet) {
+            'vegan'      => !empty($food['is_vegan']),
+            'vegetarian' => !empty($food['is_vegetarian']),
+            'gf', 'gluten_free' => !empty($food['is_gluten_free']),
+            'vegan_gf'   => !empty($food['is_vegan']) && !empty($food['is_gluten_free']),
+            'keto'       => !empty($food['is_keto_ok']),
+            'paleo'      => !empty($food['is_paleo_ok']),
+            default      => true,
+        };
     }
 
     private function dietFilter(): string
@@ -364,7 +725,7 @@ class MealBuilder
         return match ($this->diet) {
             'vegan'      => ' AND is_vegan = 1',
             'vegetarian' => ' AND is_vegetarian = 1',
-            'gf'         => ' AND is_gluten_free = 1',
+            'gf', 'gluten_free' => ' AND is_gluten_free = 1',
             'vegan_gf'   => ' AND is_vegan = 1 AND is_gluten_free = 1',
             'keto'       => ' AND is_keto_ok = 1',
             'paleo'      => ' AND is_paleo_ok = 1',
@@ -396,6 +757,8 @@ class MealBuilder
             'fat_g'        => (int)   round((float) $food['fat_per_100g']     * $f),
             'prep_minutes' => (int)  ($food['prep_minutes'] ?? 5),
             'food_type'    =>         $food['food_type'],
+            'meal_family'  =>         $this->mealFamily($food),
+            'cooking_effort' =>       $this->cookingEffort($food),
         ];
     }
 
@@ -412,6 +775,8 @@ class MealBuilder
             'fat_g'        => 9,
             'prep_minutes' => 0,
             'food_type'    => 'fat',
+            'meal_family'  => 'fat',
+            'cooking_effort' => 'quick',
         ];
     }
 
@@ -423,11 +788,16 @@ class MealBuilder
     {
         if (empty($components)) return ['Γεύμα', 'Meal'];
 
-        $protein = $carb = $veg1 = $veg2 = $fruit = $dairy = $fat = null;
+        $protein = $carb = $veg1 = $veg2 = $fruit = $dairy = $fat = $mixed = $forcedInclude = null;
         foreach ($components as $c) {
+            if (!empty($c['is_forced_include']) && !$forcedInclude) {
+                $forcedInclude = $c;
+            }
             switch ($c['food_type']) {
                 case 'protein':
                     $protein = $protein ?? $c; break;
+                case 'mixed':
+                    $mixed = $mixed ?? $c; break;
                 case 'carb':
                     $carb    = $carb    ?? $c; break;
                 case 'vegetable':
@@ -444,7 +814,7 @@ class MealBuilder
         }
 
         if ($slot === 'breakfast') {
-            $main  = $carb ?? $dairy ?? $protein;
+            $main  = $forcedInclude ?? $mixed ?? $carb ?? $dairy ?? $protein;
             $with  = ($protein && $protein !== $main)
                         ? $protein
                         : (($dairy && $dairy !== $main) ? $dairy : null);
@@ -457,16 +827,24 @@ class MealBuilder
 
         } elseif ($slot === 'snack') {
             $visible = array_slice($components, 0, 2);
+            if ($forcedInclude && !in_array($forcedInclude, $visible, true)) {
+                array_unshift($visible, $forcedInclude);
+                $visible = array_slice($visible, 0, 2);
+            }
             $nameEl  = implode(' με ',   array_column($visible, 'name_el'));
             $nameEn  = implode(' with ', array_column($visible, 'name_en'));
 
         } else {
             // lunch / dinner: protein-centric
-            $main = $protein ?? $dairy ?? $carb;
+            $main = $forcedInclude ?? $mixed ?? $protein ?? $dairy ?? $carb;
             if (!$main) return ['Γεύμα', 'Meal'];
 
             $nameEl = $main['name_el'];
             $nameEn = $main['name_en'];
+            if ($forcedInclude && $main === $forcedInclude && $protein && $protein !== $main && ($main['food_type'] ?? '') !== 'mixed') {
+                $nameEl .= ' με '    . $protein['name_el'];
+                $nameEn .= ' with '  . $protein['name_en'];
+            }
             if ($carb && $carb !== $main) {
                 $nameEl .= ' με '    . $carb['name_el'];
                 $nameEn .= ' with '  . $carb['name_en'];
@@ -476,6 +854,39 @@ class MealBuilder
         }
 
         return [$nameEl ?? 'Γεύμα', $nameEn ?? 'Meal'];
+    }
+
+    private function assembleMeal(string $slot, array $components): array
+    {
+        $totalCal = $totalP = $totalC = $totalF = 0;
+        foreach ($components as $c) {
+            $totalCal += $c['cal'];
+            $totalP   += $c['protein_g'];
+            $totalC   += $c['carbs_g'];
+            $totalF   += $c['fat_g'];
+        }
+
+        [$nameEl, $nameEn] = $this->buildName($slot, $components);
+
+        $prep = 5;
+        if (!empty($components)) {
+            $prep = max(array_column($components, 'prep_minutes'));
+        }
+        if ($slot === 'lunch' || $slot === 'dinner') {
+            $prep = max($prep, 15);
+        }
+
+        return [
+            'slot'         => $slot,
+            'name_el'      => $nameEl,
+            'name_en'      => $nameEn,
+            'calories'     => (int) round($totalCal),
+            'protein_g'    => (int) round($totalP),
+            'carbs_g'      => (int) round($totalC),
+            'fat_g'        => (int) round($totalF),
+            'prep_minutes' => (int) $prep,
+            'components'   => $components,
+        ];
     }
 
     // ──────────────────────────────────────────────────────────
@@ -503,6 +914,10 @@ class MealBuilder
         );
         $stmt->execute(['%' . $slot . '%']);
         $foods = $stmt->fetchAll();
+        $foods = array_values(array_filter(
+            $foods,
+            fn($food) => $this->foodAllowedForPlanner($food) && !$this->isDisliked($food)
+        ));
         if (empty($foods)) return [];
         $per = $target / count($foods);
         return array_map(fn($f) => $this->calc($f, $per), $foods);

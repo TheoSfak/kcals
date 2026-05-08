@@ -11,7 +11,7 @@ $db     = getDB();
 $userId = (int) $_SESSION['user_id'];
 
 // Load latest plan
-$stmt = $db->prepare('SELECT * FROM weekly_plans WHERE user_id = ? ORDER BY created_at DESC LIMIT 1');
+$stmt = $db->prepare('SELECT * FROM weekly_plans WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1');
 $stmt->execute([$userId]);
 $plan = $stmt->fetch();
 

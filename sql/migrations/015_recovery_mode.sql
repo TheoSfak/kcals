@@ -1,5 +1,5 @@
 -- ============================================================
--- Migration 013: Recovery Mode (v0.9.6)
+-- Migration 015: Recovery Mode (v0.9.6)
 -- Adds a flag to users tracking whether Recovery Mode is active.
 -- ============================================================
 
@@ -9,4 +9,4 @@ ALTER TABLE `users`
         AFTER `recharge_day`;
 
 -- Register migration
-INSERT IGNORE INTO `schema_migrations` (`filename`) VALUES ('013_recovery_mode.sql');
+INSERT IGNORE INTO `schema_migrations` (`filename`) VALUES ('015_recovery_mode.sql');
